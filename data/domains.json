@@ -1,0 +1,226 @@
+[
+  {
+    "id": "dom-1789270942057-y3mwu",
+    "domain": "elevore.web.id",
+    "port": 443,
+    "createdAt": "2026-09-13T03:42:22.057Z",
+    "updatedAt": "2026-09-13T03:42:22.136Z",
+    "lastCheck": {
+      "domain": "elevore.web.id",
+      "port": 443,
+      "status": "valid",
+      "issuer": {
+        "commonName": "YE1",
+        "organization": "Let's Encrypt",
+        "country": "US"
+      },
+      "subject": {
+        "commonName": "elevore.web.id",
+        "organization": "",
+        "country": ""
+      },
+      "validFrom": "2026-08-11T08:25:58.000Z",
+      "validTo": "2026-11-09T08:25:57.000Z",
+      "daysRemaining": 58,
+      "isExpired": false,
+      "authorized": true,
+      "authorizationError": null,
+      "subjectAltNames": [
+        "elevore.web.id",
+        "www.elevore.web.id"
+      ],
+      "serialNumber": "05EB2299B5F2686949B3935E3686939D6CD5",
+      "fingerprint256": "AA:ED:FA:E7:1D:4B:38:30:16:76:F8:1C:11:99:6F:88:D1:88:CC:D0:F2:4B:D0:B1:8D:9D:04:AC:58:59:6E:6B",
+      "protocol": "TLSv1.3",
+      "cipher": "TLS_AES_256_GCM_SHA384 (TLSv1.3)",
+      "checkedAt": "2026-09-13T03:42:22.058Z",
+      "error": null
+    }
+  },
+  {
+    "id": "dom-1789270919786-0nxm2",
+    "domain": "smartkids.elevore.web.id",
+    "port": 443,
+    "createdAt": "2026-09-13T03:41:59.786Z",
+    "updatedAt": "2026-09-13T05:41:44.707Z",
+    "lastCheck": {
+      "domain": "smartkids.elevore.web.id",
+      "port": 443,
+      "status": "valid",
+      "issuer": {
+        "commonName": "YE2",
+        "organization": "Let's Encrypt",
+        "country": "US"
+      },
+      "subject": {
+        "commonName": "smartkids.elevore.web.id",
+        "organization": "",
+        "country": ""
+      },
+      "validFrom": "2026-08-11T07:02:21.000Z",
+      "validTo": "2026-11-09T07:02:20.000Z",
+      "daysRemaining": 58,
+      "isExpired": false,
+      "authorized": true,
+      "authorizationError": null,
+      "subjectAltNames": [
+        "smartkids.elevore.web.id"
+      ],
+      "serialNumber": "06B1EED85167B076D6F5E1A229DDB6AFFE09",
+      "fingerprint256": "B7:A2:39:9E:B2:CE:2D:5D:CA:2E:17:00:5B:FF:37:88:66:CA:0E:22:37:12:61:48:78:07:E6:D0:83:57:2C:F7",
+      "protocol": "TLSv1.3",
+      "cipher": "TLS_AES_256_GCM_SHA384 (TLSv1.3)",
+      "checkedAt": "2026-09-13T05:41:44.419Z",
+      "error": null
+    }
+  },
+  {
+    "id": "dom-1789270900405-4i4m0",
+    "domain": "ticketing.elevore.web.id",
+    "port": 443,
+    "createdAt": "2026-09-13T03:41:40.405Z",
+    "updatedAt": "2026-09-13T05:41:44.767Z",
+    "lastCheck": {
+      "domain": "ticketing.elevore.web.id",
+      "port": 443,
+      "status": "valid",
+      "issuer": {
+        "commonName": "YE1",
+        "organization": "Let's Encrypt",
+        "country": "US"
+      },
+      "subject": {
+        "commonName": "ticketing.elevore.web.id",
+        "organization": "",
+        "country": ""
+      },
+      "validFrom": "2026-08-24T21:37:13.000Z",
+      "validTo": "2026-11-22T21:37:12.000Z",
+      "daysRemaining": 71,
+      "isExpired": false,
+      "authorized": true,
+      "authorizationError": null,
+      "subjectAltNames": [
+        "ticketing.elevore.web.id"
+      ],
+      "serialNumber": "06C3678CD4CE3B0114D0391960D9A7AB414D",
+      "fingerprint256": "78:D5:27:D8:BE:D9:6D:54:9C:D9:C8:98:B7:D4:2A:5B:46:BC:80:89:B9:F6:8D:D4:B3:A0:FB:63:A9:66:2D:10",
+      "protocol": "TLSv1.3",
+      "cipher": "TLS_AES_256_GCM_SHA384 (TLSv1.3)",
+      "checkedAt": "2026-09-13T05:41:44.420Z",
+      "error": null
+    }
+  },
+  {
+    "id": "dom-1789270886487-958rr",
+    "domain": "photobooth.elevore.web.id",
+    "port": 443,
+    "createdAt": "2026-09-13T03:41:26.487Z",
+    "updatedAt": "2026-09-13T05:41:25.485Z",
+    "lastCheck": {
+      "domain": "photobooth.elevore.web.id",
+      "port": 443,
+      "status": "valid",
+      "issuer": {
+        "commonName": "YE1",
+        "organization": "Let's Encrypt",
+        "country": "US"
+      },
+      "subject": {
+        "commonName": "photobooth.elevore.web.id",
+        "organization": "",
+        "country": ""
+      },
+      "validFrom": "2026-08-11T02:25:36.000Z",
+      "validTo": "2026-11-09T02:25:35.000Z",
+      "daysRemaining": 57,
+      "isExpired": false,
+      "authorized": true,
+      "authorizationError": null,
+      "subjectAltNames": [
+        "photobooth.elevore.web.id"
+      ],
+      "serialNumber": "068015810792AA27A38749C85C012425AAD2",
+      "fingerprint256": "DD:28:0B:7C:A7:E5:BD:15:45:EC:E6:6F:F3:A8:69:33:3C:D2:5D:03:0A:2E:E0:73:02:1D:82:CE:1C:2E:16:BB",
+      "protocol": "TLSv1.3",
+      "cipher": "TLS_AES_256_GCM_SHA384 (TLSv1.3)",
+      "checkedAt": "2026-09-13T05:41:25.448Z",
+      "error": null
+    }
+  },
+  {
+    "id": "dom-1789270874979-gucyl",
+    "domain": "pos.elevore.web.id",
+    "port": 443,
+    "createdAt": "2026-09-13T03:41:14.979Z",
+    "updatedAt": "2026-09-13T05:41:44.815Z",
+    "lastCheck": {
+      "domain": "pos.elevore.web.id",
+      "port": 443,
+      "status": "valid",
+      "issuer": {
+        "commonName": "YE2",
+        "organization": "Let's Encrypt",
+        "country": "US"
+      },
+      "subject": {
+        "commonName": "pos.elevore.web.id",
+        "organization": "",
+        "country": ""
+      },
+      "validFrom": "2026-08-15T22:39:36.000Z",
+      "validTo": "2026-11-13T22:39:35.000Z",
+      "daysRemaining": 62,
+      "isExpired": false,
+      "authorized": true,
+      "authorizationError": null,
+      "subjectAltNames": [
+        "pos.elevore.web.id"
+      ],
+      "serialNumber": "06E92EAB9AFBE91F2F4C4D1B6F20C762320E",
+      "fingerprint256": "68:92:52:BC:06:7B:4C:A1:D9:B5:56:F4:F9:9A:5F:BA:8D:31:F2:CE:2B:29:D4:DE:24:F7:B4:CF:B5:A8:E5:53",
+      "protocol": "TLSv1.3",
+      "cipher": "TLS_AES_256_GCM_SHA384 (TLSv1.3)",
+      "checkedAt": "2026-09-13T05:41:44.421Z",
+      "error": null
+    }
+  },
+  {
+    "id": "dom-1789270844998-p2h3i",
+    "domain": "www.tkistiqamah.com",
+    "port": 443,
+    "createdAt": "2026-09-13T03:40:44.998Z",
+    "updatedAt": "2026-09-13T05:41:45.139Z",
+    "lastCheck": {
+      "domain": "www.tkistiqamah.com",
+      "port": 443,
+      "status": "valid",
+      "issuer": {
+        "commonName": "YR2",
+        "organization": "Let's Encrypt",
+        "country": "US"
+      },
+      "subject": {
+        "commonName": "*.tkistiqamah.com",
+        "organization": "",
+        "country": ""
+      },
+      "validFrom": "2026-08-14T02:21:21.000Z",
+      "validTo": "2026-11-12T02:21:20.000Z",
+      "daysRemaining": 60,
+      "isExpired": false,
+      "authorized": true,
+      "authorizationError": null,
+      "subjectAltNames": [
+        "*.tkistiqamah.com",
+        "tkistiqamah.com"
+      ],
+      "serialNumber": "05422340B0F9A362D7A5C616BD20AED20848",
+      "fingerprint256": "9A:4C:DA:F5:9F:D7:BB:8C:AD:98:28:00:7E:E9:7A:A9:64:93:6D:75:68:78:21:E7:16:01:62:01:26:07:A1:02",
+      "protocol": "TLSv1.3",
+      "cipher": "TLS_AES_256_GCM_SHA384 (TLSv1.3)",
+      "checkedAt": "2026-09-13T05:41:44.709Z",
+      "error": null
+    }
+  }
+]
