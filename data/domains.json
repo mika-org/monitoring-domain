@@ -1,5 +1,32 @@
 [
   {
+    "id": "dom-1791346905865-ccoo3",
+    "domain": "privacy.adhivasindo.co.id",
+    "port": 443,
+    "createdAt": "2026-10-07T04:21:45.865Z",
+    "updatedAt": "2026-10-07T04:21:55.878Z",
+    "lastCheck": {
+      "domain": "privacy.adhivasindo.co.id",
+      "port": 443,
+      "status": "error",
+      "issuer": {
+        "commonName": "",
+        "organization": ""
+      },
+      "subject": {
+        "commonName": ""
+      },
+      "validFrom": "",
+      "validTo": "",
+      "daysRemaining": 0,
+      "isExpired": false,
+      "authorized": false,
+      "subjectAltNames": [],
+      "checkedAt": "2026-10-07T04:21:55.654Z",
+      "error": "Domain tidak ditemukan (DNS lookup gagal)"
+    }
+  },
+  {
     "id": "dom-1789270942057-y3mwu",
     "domain": "elevore.web.id",
     "port": 443,
