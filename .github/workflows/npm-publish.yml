@@ -4,6 +4,7 @@ on:
   push:
     branches:
       - master
+  workflow_dispatch:
 
 concurrency:
   group: deploy-vps
@@ -54,9 +55,6 @@ jobs:
 
             npm ci
 
-            npx prisma db push --accept-data-loss
-            npx prisma generate
-
             # Clean stale .next build cache to prevent ENOENT manifest errors and stale chunks
             rm -rf .next
 
@@ -69,7 +67,7 @@ jobs:
             fi
 
             echo "Managing process with $PM2_BIN on port 3009..."
-            PORT=3008 $PM2_BIN restart monitoring-domain --update-env || PORT=3009 $PM2_BIN start npm --name monitoring-domain -- start -- -p 3009 || true
+            PORT=3009 $PM2_BIN restart monitoring-domain --update-env || PORT=3009 $PM2_BIN start npm --name monitoring-domain -- start -- -p 3009 || true
             $PM2_BIN save || true
 
       - name: Calculate Duration
