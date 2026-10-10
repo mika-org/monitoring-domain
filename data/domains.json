@@ -1,5 +1,6 @@
 [
   {
+<<<<<<< HEAD
     "id": "dom-1791138084867-wi4kp",
     "domain": "alfalah.elevore.web.id",
     "port": 443,
@@ -72,6 +73,32 @@
       "cipher": "TLS_AES_256_GCM_SHA384 (TLSv1.3)",
       "checkedAt": "2026-10-04T18:20:49.229Z",
       "error": null
+=======
+    "id": "dom-1791346905865-ccoo3",
+    "domain": "privacy.adhivasindo.co.id",
+    "port": 443,
+    "createdAt": "2026-10-07T04:21:45.865Z",
+    "updatedAt": "2026-10-07T04:21:55.878Z",
+    "lastCheck": {
+      "domain": "privacy.adhivasindo.co.id",
+      "port": 443,
+      "status": "error",
+      "issuer": {
+        "commonName": "",
+        "organization": ""
+      },
+      "subject": {
+        "commonName": ""
+      },
+      "validFrom": "",
+      "validTo": "",
+      "daysRemaining": 0,
+      "isExpired": false,
+      "authorized": false,
+      "subjectAltNames": [],
+      "checkedAt": "2026-10-07T04:21:55.654Z",
+      "error": "Domain tidak ditemukan (DNS lookup gagal)"
+>>>>>>> 1fe5264c9ce382df289e69d1a15427fd63783036
     }
   },
   {
