@@ -1,5 +1,80 @@
 [
   {
+    "id": "dom-1791138084867-wi4kp",
+    "domain": "alfalah.elevore.web.id",
+    "port": 443,
+    "createdAt": "2026-10-04T18:21:24.867Z",
+    "updatedAt": "2026-10-04T18:21:24.909Z",
+    "lastCheck": {
+      "domain": "alfalah.elevore.web.id",
+      "port": 443,
+      "status": "valid",
+      "issuer": {
+        "commonName": "YE2",
+        "organization": "Let's Encrypt",
+        "country": "US"
+      },
+      "subject": {
+        "commonName": "alfalah.elevore.web.id",
+        "organization": "",
+        "country": ""
+      },
+      "validFrom": "2026-09-30T10:35:55.000Z",
+      "validTo": "2026-12-29T10:35:54.000Z",
+      "daysRemaining": 86,
+      "isExpired": false,
+      "authorized": true,
+      "authorizationError": null,
+      "subjectAltNames": [
+        "alfalah.elevore.web.id"
+      ],
+      "serialNumber": "06FAF4CAE2A8D152F851EDB9B8EB831E9E9C",
+      "fingerprint256": "FE:EA:8C:AB:72:A2:2E:A0:CF:2B:6F:B0:28:AD:99:56:F8:4E:75:6C:B5:EB:00:B3:87:DC:4D:AD:E3:A0:79:A3",
+      "protocol": "TLSv1.3",
+      "cipher": "TLS_AES_256_GCM_SHA384 (TLSv1.3)",
+      "checkedAt": "2026-10-04T18:21:24.869Z",
+      "error": null
+    }
+  },
+  {
+    "id": "dom-1791138049227-igw7x",
+    "domain": "tkistiqamah.com",
+    "port": 443,
+    "createdAt": "2026-10-04T18:20:49.227Z",
+    "updatedAt": "2026-10-04T18:20:49.262Z",
+    "lastCheck": {
+      "domain": "tkistiqamah.com",
+      "port": 443,
+      "status": "valid",
+      "issuer": {
+        "commonName": "YE1",
+        "organization": "Let's Encrypt",
+        "country": "US"
+      },
+      "subject": {
+        "commonName": "tkistiqamah.com",
+        "organization": "",
+        "country": ""
+      },
+      "validFrom": "2026-09-13T01:58:21.000Z",
+      "validTo": "2026-12-12T01:58:20.000Z",
+      "daysRemaining": 69,
+      "isExpired": false,
+      "authorized": true,
+      "authorizationError": null,
+      "subjectAltNames": [
+        "tkistiqamah.com",
+        "www.tkistiqamah.com"
+      ],
+      "serialNumber": "06B9ABFBF42578A60A753A62C9A9040A60EC",
+      "fingerprint256": "1C:1B:B0:7F:01:8E:BC:99:E0:95:80:47:64:80:9D:ED:27:DB:9C:73:35:F4:C5:78:C5:15:DC:18:CA:54:E4:D6",
+      "protocol": "TLSv1.3",
+      "cipher": "TLS_AES_256_GCM_SHA384 (TLSv1.3)",
+      "checkedAt": "2026-10-04T18:20:49.229Z",
+      "error": null
+    }
+  },
+  {
     "id": "dom-1789270942057-y3mwu",
     "domain": "elevore.web.id",
     "port": 443,
@@ -153,7 +228,7 @@
     "domain": "pos.elevore.web.id",
     "port": 443,
     "createdAt": "2026-09-13T03:41:14.979Z",
-    "updatedAt": "2026-09-13T05:41:44.815Z",
+    "updatedAt": "2026-10-04T18:20:27.120Z",
     "lastCheck": {
       "domain": "pos.elevore.web.id",
       "port": 443,
@@ -170,7 +245,7 @@
       },
       "validFrom": "2026-08-15T22:39:36.000Z",
       "validTo": "2026-11-13T22:39:35.000Z",
-      "daysRemaining": 62,
+      "daysRemaining": 41,
       "isExpired": false,
       "authorized": true,
       "authorizationError": null,
@@ -181,45 +256,7 @@
       "fingerprint256": "68:92:52:BC:06:7B:4C:A1:D9:B5:56:F4:F9:9A:5F:BA:8D:31:F2:CE:2B:29:D4:DE:24:F7:B4:CF:B5:A8:E5:53",
       "protocol": "TLSv1.3",
       "cipher": "TLS_AES_256_GCM_SHA384 (TLSv1.3)",
-      "checkedAt": "2026-09-13T05:41:44.421Z",
-      "error": null
-    }
-  },
-  {
-    "id": "dom-1789270844998-p2h3i",
-    "domain": "www.tkistiqamah.com",
-    "port": 443,
-    "createdAt": "2026-09-13T03:40:44.998Z",
-    "updatedAt": "2026-09-13T05:41:45.139Z",
-    "lastCheck": {
-      "domain": "www.tkistiqamah.com",
-      "port": 443,
-      "status": "valid",
-      "issuer": {
-        "commonName": "YR2",
-        "organization": "Let's Encrypt",
-        "country": "US"
-      },
-      "subject": {
-        "commonName": "*.tkistiqamah.com",
-        "organization": "",
-        "country": ""
-      },
-      "validFrom": "2026-08-14T02:21:21.000Z",
-      "validTo": "2026-11-12T02:21:20.000Z",
-      "daysRemaining": 60,
-      "isExpired": false,
-      "authorized": true,
-      "authorizationError": null,
-      "subjectAltNames": [
-        "*.tkistiqamah.com",
-        "tkistiqamah.com"
-      ],
-      "serialNumber": "05422340B0F9A362D7A5C616BD20AED20848",
-      "fingerprint256": "9A:4C:DA:F5:9F:D7:BB:8C:AD:98:28:00:7E:E9:7A:A9:64:93:6D:75:68:78:21:E7:16:01:62:01:26:07:A1:02",
-      "protocol": "TLSv1.3",
-      "cipher": "TLS_AES_256_GCM_SHA384 (TLSv1.3)",
-      "checkedAt": "2026-09-13T05:41:44.709Z",
+      "checkedAt": "2026-10-04T18:20:27.068Z",
       "error": null
     }
   }
