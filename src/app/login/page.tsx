@@ -2,7 +2,7 @@
 
 import React, { useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { ShieldCheck, Lock, User, Mail, ArrowRight, Eye, EyeOff, Sparkles, CheckCircle2 } from 'lucide-react';
+import { ShieldCheck, Lock, User, Mail, ArrowRight, Eye, EyeOff, CheckCircle2, AlertCircle } from 'lucide-react';
 
 export default function LoginPage() {
   const router = useRouter();
@@ -15,13 +15,6 @@ export default function LoginPage() {
   const [isLoading, setIsLoading] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
-
-  const handleUseDefaultAdmin = () => {
-    setUsername('admin');
-    setPassword('admin123');
-    setMode('login');
-    setErrorMessage(null);
-  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -39,14 +32,14 @@ export default function LoginPage() {
         const data = await res.json();
 
         if (!res.ok || !data.success) {
-          throw new Error(data.error || 'Login gagal');
+          throw new Error(data.error || 'Login gagal, periksa username dan password Anda');
         }
 
         setSuccessMessage('Login berhasil! Mengalihkan ke dashboard...');
         setTimeout(() => {
           router.push('/');
           router.refresh();
-        }, 600);
+        }, 500);
       } else {
         const res = await fetch('/api/auth/register', {
           method: 'POST',
@@ -68,10 +61,10 @@ export default function LoginPage() {
         setTimeout(() => {
           router.push('/');
           router.refresh();
-        }, 700);
+        }, 500);
       }
     } catch (err: unknown) {
-      setErrorMessage(err instanceof Error ? err.message : 'Terjadi kesalahan');
+      setErrorMessage(err instanceof Error ? err.message : 'Terjadi kesalahan sistem');
     } finally {
       setIsLoading(false);
     }
@@ -122,20 +115,20 @@ export default function LoginPage() {
       <div
         style={{
           width: '100%',
-          maxWidth: '440px',
+          maxWidth: '430px',
           background: 'var(--bg-card)',
           border: '1px solid var(--border-glass)',
           borderRadius: '1.25rem',
-          padding: '2.5rem 2rem',
+          padding: '2.5rem 2.25rem',
           backdropFilter: 'blur(20px)',
           WebkitBackdropFilter: 'blur(20px)',
-          boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.65), 0 0 0 1px rgba(255, 255, 255, 0.05)',
+          boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.7), 0 0 0 1px rgba(255, 255, 255, 0.05)',
           position: 'relative',
           zIndex: 1,
         }}
       >
         {/* Brand Header */}
-        <div style={{ textAlign: 'center', marginBottom: '2rem' }}>
+        <div style={{ textAlign: 'center', marginBottom: '1.75rem' }}>
           <div
             style={{
               display: 'inline-flex',
@@ -155,7 +148,7 @@ export default function LoginPage() {
           </div>
           <h1
             style={{
-              fontSize: '1.65rem',
+              fontSize: '1.625rem',
               fontWeight: 700,
               color: 'var(--text-main)',
               letterSpacing: '-0.025em',
@@ -164,8 +157,8 @@ export default function LoginPage() {
           >
             CertPulse
           </h1>
-          <p style={{ fontSize: '0.875rem', color: 'var(--text-muted)' }}>
-            Monitoring Masa Aktif SSL & Validitas Domain Realtime
+          <p style={{ fontSize: '0.85rem', color: 'var(--text-muted)' }}>
+            Monitoring Masa Aktif SSL & Validitas Domain
           </p>
         </div>
 
@@ -174,11 +167,11 @@ export default function LoginPage() {
           style={{
             display: 'grid',
             gridTemplateColumns: '1fr 1fr',
-            background: 'rgba(15, 23, 42, 0.7)',
-            padding: '0.3rem',
+            background: 'rgba(15, 23, 42, 0.75)',
+            padding: '0.25rem',
             borderRadius: '0.75rem',
             border: '1px solid var(--border-subtle)',
-            marginBottom: '1.5rem',
+            marginBottom: '1.75rem',
           }}
         >
           <button
@@ -188,7 +181,7 @@ export default function LoginPage() {
               setErrorMessage(null);
             }}
             style={{
-              padding: '0.6rem 0.5rem',
+              padding: '0.55rem 0.5rem',
               borderRadius: '0.5rem',
               fontSize: '0.875rem',
               fontWeight: mode === 'login' ? 600 : 500,
@@ -208,7 +201,7 @@ export default function LoginPage() {
               setErrorMessage(null);
             }}
             style={{
-              padding: '0.6rem 0.5rem',
+              padding: '0.55rem 0.5rem',
               borderRadius: '0.5rem',
               fontSize: '0.875rem',
               fontWeight: mode === 'register' ? 600 : 500,
@@ -223,50 +216,6 @@ export default function LoginPage() {
           </button>
         </div>
 
-        {/* Default Admin Quick-fill Card */}
-        {mode === 'login' && (
-          <div
-            style={{
-              background: 'rgba(56, 189, 248, 0.08)',
-              border: '1px dashed rgba(56, 189, 248, 0.35)',
-              borderRadius: '0.75rem',
-              padding: '0.85rem 1rem',
-              marginBottom: '1.5rem',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'space-between',
-              gap: '0.75rem',
-            }}
-          >
-            <div>
-              <div style={{ fontSize: '0.8rem', fontWeight: 600, color: 'var(--cyan-400)', display: 'flex', alignItems: 'center', gap: '0.35rem' }}>
-                <Sparkles size={14} /> Akun Default Administrator
-              </div>
-              <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginTop: '0.15rem' }}>
-                Username: <code style={{ color: '#fff', background: 'rgba(0,0,0,0.3)', padding: '0.1rem 0.3rem', borderRadius: '4px' }}>admin</code> &bull; Password: <code style={{ color: '#fff', background: 'rgba(0,0,0,0.3)', padding: '0.1rem 0.3rem', borderRadius: '4px' }}>admin123</code>
-              </div>
-            </div>
-            <button
-              type="button"
-              onClick={handleUseDefaultAdmin}
-              style={{
-                fontSize: '0.75rem',
-                fontWeight: 600,
-                padding: '0.4rem 0.75rem',
-                borderRadius: '0.5rem',
-                background: 'rgba(56, 189, 248, 0.2)',
-                border: '1px solid rgba(56, 189, 248, 0.4)',
-                color: 'var(--cyan-400)',
-                cursor: 'pointer',
-                whiteSpace: 'nowrap',
-                transition: 'all 0.2s',
-              }}
-            >
-              Gunakan
-            </button>
-          </div>
-        )}
-
         {/* Error Alert */}
         {errorMessage && (
           <div
@@ -275,15 +224,15 @@ export default function LoginPage() {
               border: '1px solid rgba(239, 68, 68, 0.35)',
               color: '#fca5a5',
               padding: '0.75rem 1rem',
-              borderRadius: '0.75rem',
-              fontSize: '0.85rem',
+              borderRadius: '0.625rem',
+              fontSize: '0.8125rem',
               marginBottom: '1.25rem',
               display: 'flex',
               alignItems: 'center',
-              gap: '0.5rem',
+              gap: '0.6rem',
             }}
           >
-            <span>&bull;</span>
+            <AlertCircle size={16} style={{ flexShrink: 0, color: '#f87171' }} />
             <span>{errorMessage}</span>
           </div>
         )}
@@ -296,52 +245,53 @@ export default function LoginPage() {
               border: '1px solid rgba(16, 185, 129, 0.35)',
               color: '#6ee7b7',
               padding: '0.75rem 1rem',
-              borderRadius: '0.75rem',
-              fontSize: '0.85rem',
+              borderRadius: '0.625rem',
+              fontSize: '0.8125rem',
               marginBottom: '1.25rem',
               display: 'flex',
               alignItems: 'center',
-              gap: '0.5rem',
+              gap: '0.6rem',
             }}
           >
-            <CheckCircle2 size={16} />
+            <CheckCircle2 size={16} style={{ flexShrink: 0, color: '#34d399' }} />
             <span>{successMessage}</span>
           </div>
         )}
 
         {/* Form */}
-        <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '1.1rem' }}>
+        <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '1.15rem' }}>
           {mode === 'register' && (
             <div>
               <label
                 style={{
                   display: 'block',
-                  fontSize: '0.825rem',
+                  fontSize: '0.8125rem',
                   fontWeight: 500,
                   color: 'var(--text-muted)',
-                  marginBottom: '0.4rem',
+                  marginBottom: '0.45rem',
                 }}
               >
-                Nama Lengkap (Opsional)
+                Nama Lengkap <span style={{ color: 'var(--text-dim)', fontSize: '0.75rem' }}>(Opsional)</span>
               </label>
               <div style={{ position: 'relative' }}>
-                <input
-                  type="text"
-                  value={name}
-                  onChange={(e) => setName(e.target.value)}
-                  placeholder="Misal: John Doe"
-                  className="input-custom"
-                  style={{ width: '100%', paddingLeft: '2.5rem' }}
-                />
                 <User
                   size={16}
                   style={{
                     position: 'absolute',
-                    left: '0.85rem',
+                    left: '0.95rem',
                     top: '50%',
                     transform: 'translateY(-50%)',
                     color: 'var(--text-dim)',
+                    pointerEvents: 'none',
                   }}
+                />
+                <input
+                  type="text"
+                  value={name}
+                  onChange={(e) => setName(e.target.value)}
+                  placeholder="Contoh: John Doe"
+                  className="input-text"
+                  style={{ paddingLeft: '2.75rem' }}
                 />
               </div>
             </div>
@@ -351,34 +301,35 @@ export default function LoginPage() {
             <label
               style={{
                 display: 'block',
-                fontSize: '0.825rem',
+                fontSize: '0.8125rem',
                 fontWeight: 500,
                 color: 'var(--text-muted)',
-                marginBottom: '0.4rem',
+                marginBottom: '0.45rem',
               }}
             >
               Username
             </label>
             <div style={{ position: 'relative' }}>
+              <User
+                size={16}
+                style={{
+                  position: 'absolute',
+                  left: '0.95rem',
+                  top: '50%',
+                  transform: 'translateY(-50%)',
+                  color: 'var(--text-dim)',
+                  pointerEvents: 'none',
+                }}
+              />
               <input
                 type="text"
                 required
                 value={username}
                 onChange={(e) => setUsername(e.target.value)}
                 placeholder="Masukkan username"
-                className="input-custom"
-                style={{ width: '100%', paddingLeft: '2.5rem' }}
+                className="input-text"
+                style={{ paddingLeft: '2.75rem' }}
                 autoComplete="username"
-              />
-              <User
-                size={16}
-                style={{
-                  position: 'absolute',
-                  left: '0.85rem',
-                  top: '50%',
-                  transform: 'translateY(-50%)',
-                  color: 'var(--text-dim)',
-                }}
               />
             </div>
           </div>
@@ -388,33 +339,34 @@ export default function LoginPage() {
               <label
                 style={{
                   display: 'block',
-                  fontSize: '0.825rem',
+                  fontSize: '0.8125rem',
                   fontWeight: 500,
                   color: 'var(--text-muted)',
-                  marginBottom: '0.4rem',
+                  marginBottom: '0.45rem',
                 }}
               >
-                Email (Opsional)
+                Email <span style={{ color: 'var(--text-dim)', fontSize: '0.75rem' }}>(Opsional)</span>
               </label>
               <div style={{ position: 'relative' }}>
+                <Mail
+                  size={16}
+                  style={{
+                    position: 'absolute',
+                    left: '0.95rem',
+                    top: '50%',
+                    transform: 'translateY(-50%)',
+                    color: 'var(--text-dim)',
+                    pointerEvents: 'none',
+                  }}
+                />
                 <input
                   type="email"
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
                   placeholder="admin@domain.com"
-                  className="input-custom"
-                  style={{ width: '100%', paddingLeft: '2.5rem' }}
+                  className="input-text"
+                  style={{ paddingLeft: '2.75rem' }}
                   autoComplete="email"
-                />
-                <Mail
-                  size={16}
-                  style={{
-                    position: 'absolute',
-                    left: '0.85rem',
-                    top: '50%',
-                    transform: 'translateY(-50%)',
-                    color: 'var(--text-dim)',
-                  }}
                 />
               </div>
             </div>
@@ -424,38 +376,40 @@ export default function LoginPage() {
             <label
               style={{
                 display: 'block',
-                fontSize: '0.825rem',
+                fontSize: '0.8125rem',
                 fontWeight: 500,
                 color: 'var(--text-muted)',
-                marginBottom: '0.4rem',
+                marginBottom: '0.45rem',
               }}
             >
               Password
             </label>
             <div style={{ position: 'relative' }}>
+              <Lock
+                size={16}
+                style={{
+                  position: 'absolute',
+                  left: '0.95rem',
+                  top: '50%',
+                  transform: 'translateY(-50%)',
+                  color: 'var(--text-dim)',
+                  pointerEvents: 'none',
+                }}
+              />
               <input
                 type={showPassword ? 'text' : 'password'}
                 required
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
                 placeholder="Masukkan password"
-                className="input-custom"
-                style={{ width: '100%', paddingLeft: '2.5rem', paddingRight: '2.5rem' }}
+                className="input-text"
+                style={{ paddingLeft: '2.75rem', paddingRight: '2.75rem' }}
                 autoComplete={mode === 'login' ? 'current-password' : 'new-password'}
-              />
-              <Lock
-                size={16}
-                style={{
-                  position: 'absolute',
-                  left: '0.85rem',
-                  top: '50%',
-                  transform: 'translateY(-50%)',
-                  color: 'var(--text-dim)',
-                }}
               />
               <button
                 type="button"
                 onClick={() => setShowPassword(!showPassword)}
+                title={showPassword ? 'Sembunyikan password' : 'Lihat password'}
                 style={{
                   position: 'absolute',
                   right: '0.85rem',
@@ -465,9 +419,15 @@ export default function LoginPage() {
                   border: 'none',
                   color: 'var(--text-dim)',
                   cursor: 'pointer',
-                  padding: 0,
+                  padding: '0.35rem',
+                  borderRadius: '0.375rem',
                   display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  transition: 'color 0.15s ease',
                 }}
+                onMouseEnter={(e) => ((e.currentTarget as HTMLElement).style.color = 'var(--text-main)')}
+                onMouseLeave={(e) => ((e.currentTarget as HTMLElement).style.color = 'var(--text-dim)')}
               >
                 {showPassword ? <EyeOff size={16} /> : <Eye size={16} />}
               </button>
@@ -480,11 +440,12 @@ export default function LoginPage() {
             className="btn btn-primary"
             style={{
               width: '100%',
-              marginTop: '0.5rem',
-              padding: '0.75rem',
-              fontSize: '0.925rem',
+              marginTop: '0.65rem',
+              padding: '0.8rem',
+              fontSize: '0.9375rem',
               fontWeight: 600,
               justifyContent: 'center',
+              borderRadius: 'var(--radius-md)',
             }}
           >
             {isLoading ? (
