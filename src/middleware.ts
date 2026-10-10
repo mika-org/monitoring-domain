@@ -2,10 +2,10 @@ import { NextResponse, type NextRequest } from 'next/server';
 import { jwtVerify } from 'jose';
 
 const JWT_SECRET = new TextEncoder().encode(
-  process.env.JWT_SECRET || 'certpulse-super-secret-jwt-key-2026-secure'
+  process.env.JWT_SECRET || 'viorecert-super-secret-jwt-key-2026-secure'
 );
 
-const AUTH_COOKIE_NAME = 'certpulse_session';
+const AUTH_COOKIE_NAME = 'viorecert_session';
 
 async function isTokenValid(token?: string): Promise<boolean> {
   if (!token) return false;
@@ -41,8 +41,13 @@ export async function middleware(request: NextRequest) {
     return NextResponse.next();
   }
 
+  // Agent ingestion endpoints are protected by Bearer token in route handlers
+  if (pathname.startsWith('/api/agent/')) {
+    return NextResponse.next();
+  }
+
   // Handle protected API routes
-  if (pathname.startsWith('/api/domains') || pathname.startsWith('/api/ssl')) {
+  if (pathname.startsWith('/api/')) {
     if (!authenticated) {
       return NextResponse.json(
         { success: false, error: 'Silakan login terlebih dahulu' },

@@ -59,7 +59,7 @@ export const Header: React.FC<HeaderProps> = ({
           </div>
           <div style={{ display: 'flex', flexDirection: 'column' }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-              <span className="brand-title">CertPulse</span>
+              <span className="brand-title">VioreCert</span>
               <span className="brand-badge">Realtime</span>
             </div>
             <span style={{ fontSize: '0.75rem', color: 'var(--text-dim)', fontWeight: 400 }}>

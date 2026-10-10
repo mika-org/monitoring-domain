@@ -1,376 +1,388 @@
 'use client';
 
-import React, { useState, useEffect, useMemo, useCallback } from 'react';
-import { Header } from '@/components/Header';
-import { MetricCards } from '@/components/MetricCards';
-import { QuickChecker } from '@/components/QuickChecker';
-import { DomainTable } from '@/components/DomainTable';
-import { AddDomainModal } from '@/components/AddDomainModal';
-import { BatchAddModal } from '@/components/BatchAddModal';
-import { StandaloneQRGeneratorModal } from '@/components/StandaloneQRGeneratorModal';
-import { MonitoredDomain, SSLCheckSummary } from '@/types/ssl';
-import { ShieldCheck, Sparkles, CheckCircle2, AlertCircle, QrCode } from 'lucide-react';
+import React, { useState, useEffect, useCallback } from 'react';
+import Link from 'next/link';
+import {
+  LayoutGrid,
+  Server,
+  Globe,
+  Cpu,
+  AlertTriangle,
+  RefreshCw,
+  Activity,
+  Wifi,
+  Clock,
+  Layers,
+  ArrowRight,
+  Shield,
+  CheckCircle2,
+  XCircle,
+  ExternalLink,
+} from 'lucide-react';
+import { Sidebar } from '@/components/Sidebar';
 
-export default function Home() {
-  const [domains, setDomains] = useState<MonitoredDomain[]>([]);
+export default function OverviewDashboardPage() {
+  const [data, setData] = useState<any>(null);
   const [isLoading, setIsLoading] = useState(true);
-  const [isRefreshingAll, setIsRefreshingAll] = useState(false);
-  const [isRecheckingId, setIsRecheckingId] = useState<string | null>(null);
-  const [isAddModalOpen, setIsAddModalOpen] = useState(false);
-  const [isBatchModalOpen, setIsBatchModalOpen] = useState(false);
-  const [isQRStudioOpen, setIsQRStudioOpen] = useState(false);
-  const [activeFilter, setActiveFilter] = useState('all');
-  const [toast, setToast] = useState<{ message: string; type: 'success' | 'error' } | null>(null);
 
-  const showToast = useCallback((message: string, type: 'success' | 'error' = 'success') => {
-    setToast({ message, type });
-    setTimeout(() => {
-      setToast(null);
-    }, 3500);
-  }, []);
-
-  const fetchDomains = useCallback(async (isInitial = false) => {
+  const fetchOverview = useCallback(async () => {
     try {
-      if (isInitial) setIsLoading(true);
-      const url = isInitial ? '/api/domains?init=true' : '/api/domains';
-      const res = await fetch(url);
-      const json = await res.json();
-      if (json.success && Array.isArray(json.data)) {
-        setDomains(json.data);
-      }
-    } catch (err) {
-      console.error('Failed fetching domains', err);
-      showToast('Gagal memuat daftar domain', 'error');
-    } finally {
-      if (isInitial) setIsLoading(false);
-    }
-  }, [showToast]);
-
-  useEffect(() => {
-    fetchDomains(true);
-  }, [fetchDomains]);
-
-  // Handle Refresh All
-  const handleRefreshAll = async () => {
-    setIsRefreshingAll(true);
-    try {
-      const res = await fetch('/api/domains/check-all', { method: 'POST' });
-      const json = await res.json();
-      if (json.success && Array.isArray(json.data)) {
-        setDomains(json.data);
-        showToast('Semua status SSL domain berhasil diperbarui');
-      } else {
-        throw new Error(json.error || 'Gagal memperbarui status');
-      }
-    } catch (err: unknown) {
-      showToast(err instanceof Error ? err.message : 'Gagal memperbarui semua domain', 'error');
-    } finally {
-      setIsRefreshingAll(false);
-    }
-  };
-
-  // Handle Single Recheck
-  const handleRecheck = async (id: string) => {
-    setIsRecheckingId(id);
-    try {
-      const res = await fetch(`/api/domains/${id}/check`, { method: 'POST' });
-      const json = await res.json();
-      if (json.success && json.data) {
-        setDomains((prev) =>
-          prev.map((d) => (d.id === id ? json.data : d))
-        );
-        showToast(`SSL domain ${json.data.domain} berhasil diperiksa`);
-      } else {
-        throw new Error(json.error || 'Gagal memeriksa domain');
-      }
-    } catch (err: unknown) {
-      showToast(err instanceof Error ? err.message : 'Gagal memeriksa SSL domain', 'error');
-    } finally {
-      setIsRecheckingId(null);
-    }
-  };
-
-  // Handle Add Domain
-  const handleAddDomain = async (domain: string, port = 443, alias?: string): Promise<boolean> => {
-    try {
-      const res = await fetch('/api/domains', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ domain, port, alias }),
-      });
-      const json = await res.json();
-      if (!res.ok || !json.success) {
-        throw new Error(json.error || 'Gagal menambahkan domain');
-      }
-
-      if (json.isDuplicate) {
-        showToast(`Domain ${domain} sudah ada dalam pemantauan`, 'error');
-        return false;
-      }
-
-      setDomains((prev) => [json.data, ...prev.filter((d) => d.id !== json.data.id)]);
-      showToast(`Domain ${domain} berhasil ditambahkan dan diperiksa`);
-      return true;
-    } catch (err: unknown) {
-      showToast(err instanceof Error ? err.message : 'Gagal menyimpan domain', 'error');
-      return false;
-    }
-  };
-
-  // Handle Batch Add
-  const handleBatchAdd = async (domainList: string[]) => {
-    const res = await fetch('/api/domains/batch', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ domains: domainList }),
-    });
-    const json = await res.json();
-    if (!res.ok || !json.success) {
-      throw new Error(json.error || 'Gagal memproses batch import');
-    }
-
-    if (Array.isArray(json.data)) {
-      setDomains(json.data);
-    }
-    showToast(`Berhasil menambahkan ${json.addedCount} domain baru`);
-    return { addedCount: json.addedCount, skippedCount: json.skippedCount };
-  };
-
-  // Handle Delete
-  const handleDelete = async (id: string, domainName: string) => {
-    const confirmed = window.confirm(`Apakah Anda yakin ingin menghapus "${domainName}" dari daftar pemantauan?`);
-    if (!confirmed) return;
-
-    try {
-      const res = await fetch(`/api/domains?id=${encodeURIComponent(id)}`, {
-        method: 'DELETE',
-      });
+      const res = await fetch('/api/dashboard/overview');
       const json = await res.json();
       if (json.success) {
-        setDomains((prev) => prev.filter((d) => d.id !== id));
-        showToast(`Domain ${domainName} berhasil dihapus dari pemantauan`);
-      } else {
-        throw new Error(json.error || 'Gagal menghapus');
+        setData(json.data);
       }
-    } catch (err: unknown) {
-      showToast(err instanceof Error ? err.message : 'Gagal menghapus domain', 'error');
+    } catch (e) {
+      console.error(e);
+    } finally {
+      setIsLoading(false);
     }
-  };
+  }, []);
 
-  // Check if domain is already monitored
-  const isDomainAlreadyMonitored = useCallback(
-    (domain: string, port = 443) => {
-      const cleanHost = domain.toLowerCase().replace(/^(https?:\/\/)/, '').split('/')[0];
-      return domains.some((d) => d.domain.toLowerCase() === cleanHost && d.port === port);
-    },
-    [domains]
-  );
+  useEffect(() => {
+    fetchOverview();
+    const intv = setInterval(fetchOverview, 15000);
+    return () => clearInterval(intv);
+  }, [fetchOverview]);
 
-  // Handle CSV Export
-  const handleExportCSV = () => {
-    if (domains.length === 0) {
-      showToast('Tidak ada data domain untuk diekspor', 'error');
-      return;
-    }
-
-    const headers = ['Domain', 'Port', 'Alias', 'Status', 'Sisa Hari', 'Kadaluarsa Pada', 'Penerbit CA', 'Protokol', 'Terakhir Dicek'];
-    const rows = domains.map((d) => [
-      `"${d.domain}"`,
-      d.port,
-      `"${d.alias || ''}"`,
-      `"${d.lastCheck?.status || 'unchecked'}"`,
-      d.lastCheck?.daysRemaining ?? '',
-      `"${d.lastCheck?.validTo || ''}"`,
-      `"${d.lastCheck?.issuer.organization || d.lastCheck?.issuer.commonName || ''}"`,
-      `"${d.lastCheck?.protocol || ''}"`,
-      `"${d.lastCheck?.checkedAt || ''}"`,
-    ]);
-
-    const csvContent = [headers.join(','), ...rows.map((r) => r.join(','))].join('\n');
-    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
-    const url = URL.createObjectURL(blob);
-    const link = document.createElement('a');
-    link.setAttribute('href', url);
-    link.setAttribute('download', `ssl-domains-export-${new Date().toISOString().slice(0, 10)}.csv`);
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
-    showToast('Data domain berhasil diekspor ke CSV');
-  };
-
-  // Summary Metrics
-  const summary: SSLCheckSummary = useMemo(() => {
-    const s: SSLCheckSummary = {
-      total: domains.length,
-      valid: 0,
-      warning: 0,
-      critical: 0,
-      expired: 0,
-      error: 0,
-    };
-
-    for (const d of domains) {
-      const st = d.lastCheck?.status;
-      if (st === 'valid') s.valid++;
-      else if (st === 'warning') s.warning++;
-      else if (st === 'critical') s.critical++;
-      else if (st === 'expired') s.expired++;
-      else if (st === 'error') s.error++;
-    }
-
-    return s;
-  }, [domains]);
+  const s = data?.servers || { total: 0, online: 0, offline: 0, avgCpu: 0, avgRam: 0, totalNetIn: 0, totalNetOut: 0, list: [] };
+  const w = data?.websites || { total: 0, up: 0, down: 0 };
+  const pm2 = data?.pm2 || { total: 0, online: 0, errored: 0 };
+  const alerts = data?.alerts || [];
 
   return (
-    <>
-      <Header
-        onRefreshAll={handleRefreshAll}
-        onOpenAddModal={() => setIsAddModalOpen(true)}
-        onOpenBatchModal={() => setIsBatchModalOpen(true)}
-        onOpenQRStudio={() => setIsQRStudioOpen(true)}
-        onExport={handleExportCSV}
-        isRefreshingAll={isRefreshingAll}
-      />
+    <div
+      style={{
+        display: 'flex',
+        height: '100vh',
+        maxHeight: '100vh',
+        overflow: 'hidden',
+        background: '#f8fafc',
+        color: '#0f172a',
+        fontFamily: "var(--font-plus-jakarta), 'Plus Jakarta Sans', sans-serif",
+      }}
+    >
+      <Sidebar />
 
-      <main className="container" style={{ paddingTop: '2rem', paddingBottom: '4rem' }}>
-        {/* Toast Notification */}
-        {toast && (
-          <div
-            style={{
-              position: 'fixed',
-              bottom: '2rem',
-              right: '2rem',
-              zIndex: 99,
-              padding: '0.875rem 1.25rem',
-              borderRadius: 'var(--radius-md)',
-              background: toast.type === 'success' ? '#064e3b' : '#881337',
-              color: '#ffffff',
-              border: `1px solid ${toast.type === 'success' ? '#059669' : '#e11d48'}`,
-              boxShadow: 'var(--shadow-lg)',
-              display: 'flex',
-              alignItems: 'center',
-              gap: '0.6rem',
-              fontSize: '0.875rem',
-              fontWeight: 500,
-              animation: 'fadeIn 0.2s ease-out',
-            }}
-          >
-            {toast.type === 'success' ? <CheckCircle2 size={18} /> : <AlertCircle size={18} />}
-            <span>{toast.message}</span>
-          </div>
-        )}
-
-        {/* Hero Welcome banner */}
-        <div style={{ marginBottom: '2rem', display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', flexWrap: 'wrap', gap: '1rem' }}>
+      <main
+        style={{
+          flex: 1,
+          height: '100vh',
+          maxHeight: '100vh',
+          display: 'flex',
+          flexDirection: 'column',
+          padding: '1rem 1.5rem',
+          gap: '0.85rem',
+          overflow: 'hidden',
+          minWidth: 0,
+        }}
+      >
+        {/* Top Header */}
+        <header
+          style={{
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'space-between',
+            flexShrink: 0,
+          }}
+        >
           <div>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.4rem' }}>
-              <span
-                style={{
-                  display: 'inline-flex',
-                  alignItems: 'center',
-                  gap: '0.35rem',
-                  fontSize: '0.75rem',
-                  fontWeight: 600,
-                  color: 'var(--cyan-400)',
-                  background: 'rgba(56, 189, 248, 0.1)',
-                  padding: '0.2rem 0.6rem',
-                  borderRadius: 'var(--radius-full)',
-                  border: '1px solid rgba(56, 189, 248, 0.25)',
-                }}
-              >
-                <Sparkles size={12} /> Dashboard Tanpa Login
+            <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+              <h1 style={{ fontSize: '1.25rem', fontWeight: 800, color: '#0f172a', margin: 0, letterSpacing: '-0.02em' }}>
+                Server Monitoring Dashboard
+              </h1>
+              <span style={{ fontSize: '0.6875rem', fontWeight: 700, padding: '0.15rem 0.5rem', borderRadius: '999px', background: '#dcfce7', color: '#15803d' }}>
+                System Normal
               </span>
             </div>
-            <h1 style={{ fontSize: '2rem', fontWeight: 800, letterSpacing: '-0.02em', color: '#ffffff' }}>
-              Pemantauan Masa Aktif SSL &amp; Keamanan Domain
-            </h1>
-            <p style={{ color: 'var(--text-muted)', fontSize: '0.9375rem', marginTop: '0.35rem' }}>
-              Pantau tanggal kedaluwarsa sertifikat SSL/TLS domain Anda secara instan dan otomatis tanpa perlu registrasi.
+            <p style={{ fontSize: '0.75rem', color: '#64748b', margin: '0.1rem 0 0 0' }}>
+              Pusat kendali infrastruktur VPS Ubuntu, proses PM2, dan website production
             </p>
           </div>
 
-          <button
-            type="button"
-            className="btn btn-secondary"
-            onClick={() => setIsQRStudioOpen(true)}
+          <div style={{ display: 'flex', alignItems: 'center', gap: '0.65rem' }}>
+            <span style={{ fontSize: '0.71875rem', color: '#94a3b8' }}>
+              Diperbarui: {data?.updatedAt ? new Date(data.updatedAt).toLocaleTimeString('id-ID') : '-'}
+            </span>
+
+            <button
+              type="button"
+              onClick={fetchOverview}
+              disabled={isLoading}
+              style={{
+                width: '34px',
+                height: '34px',
+                borderRadius: '8px',
+                border: '1px solid #e2e8f0',
+                background: '#ffffff',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                cursor: 'pointer',
+              }}
+              title="Refresh metrik"
+            >
+              <RefreshCw size={14} className={isLoading ? 'spin-slow' : ''} style={{ color: '#2563eb' }} />
+            </button>
+
+            <Link
+              href="/servers"
+              style={{
+                padding: '0.45rem 0.95rem',
+                borderRadius: '8px',
+                background: '#2563eb',
+                color: '#ffffff',
+                fontSize: '0.78125rem',
+                fontWeight: 700,
+                textDecoration: 'none',
+                display: 'flex',
+                alignItems: 'center',
+                gap: '0.35rem',
+              }}
+            >
+              <Server size={14} />
+              <span>Kelola Server</span>
+            </Link>
+          </div>
+        </header>
+
+        {/* 5 Core Infrastructure Metric Cards */}
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(5, 1fr)', gap: '0.75rem', flexShrink: 0 }}>
+          {/* Card 1: Servers */}
+          <Link
+            href="/servers"
             style={{
-              padding: '0.75rem 1.25rem',
-              border: '1px solid rgba(56, 189, 248, 0.35)',
-              background: 'rgba(15, 23, 42, 0.75)',
-              boxShadow: '0 4px 20px rgba(6, 182, 212, 0.15)',
+              background: '#ffffff',
+              border: '1px solid #e2e8f0',
+              borderRadius: '12px',
+              padding: '0.75rem 1rem',
+              textDecoration: 'none',
+              boxShadow: '0 1px 2px rgba(0, 0, 0, 0.03)',
             }}
           >
-            <QrCode size={18} style={{ color: 'var(--cyan-400)' }} />
-            <span>Buka QR Studio &amp; Link Builder</span>
-          </button>
-        </div>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+              <span style={{ fontSize: '0.71875rem', color: '#64748b', fontWeight: 600 }}>Total VPS Server</span>
+              <Server size={16} style={{ color: '#2563eb' }} />
+            </div>
+            <div style={{ fontSize: '1.45rem', fontWeight: 800, color: '#0f172a', marginTop: '0.2rem' }}>
+              {s.total}
+            </div>
+            <div style={{ fontSize: '0.6875rem', color: '#16a34a', fontWeight: 600, marginTop: '0.15rem' }}>
+              {s.online} Online • {s.offline} Offline
+            </div>
+          </Link>
 
-        {/* Metric Cards */}
-        <MetricCards
-          summary={summary}
-          activeFilter={activeFilter}
-          onFilterChange={setActiveFilter}
-        />
+          {/* Card 2: Websites */}
+          <Link
+            href="/websites"
+            style={{
+              background: '#ffffff',
+              border: '1px solid #e2e8f0',
+              borderRadius: '12px',
+              padding: '0.75rem 1rem',
+              textDecoration: 'none',
+              boxShadow: '0 1px 2px rgba(0, 0, 0, 0.03)',
+            }}
+          >
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+              <span style={{ fontSize: '0.71875rem', color: '#64748b', fontWeight: 600 }}>Websites Monitored</span>
+              <Globe size={16} style={{ color: '#0284c7' }} />
+            </div>
+            <div style={{ fontSize: '1.45rem', fontWeight: 800, color: '#0f172a', marginTop: '0.2rem' }}>
+              {w.total}
+            </div>
+            <div style={{ fontSize: '0.6875rem', color: '#16a34a', fontWeight: 600, marginTop: '0.15rem' }}>
+              {w.up} UP • {w.down} DOWN
+            </div>
+          </Link>
 
-        {/* Quick Instant SSL Checker */}
-        <QuickChecker
-          onAddToWatchlist={handleAddDomain}
-          isDomainAlreadyMonitored={isDomainAlreadyMonitored}
-        />
-
-        {/* Monitored Domains Watchlist Table */}
-        <DomainTable
-          domains={domains}
-          onRecheck={handleRecheck}
-          onDelete={handleDelete}
-          isRecheckingId={isRecheckingId}
-          activeFilter={activeFilter}
-          onFilterChange={setActiveFilter}
-          onOpenAddModal={() => setIsAddModalOpen(true)}
-        />
-      </main>
-
-      {/* Add Domain Modal */}
-      <AddDomainModal
-        isOpen={isAddModalOpen}
-        onClose={() => setIsAddModalOpen(false)}
-        onAddDomain={handleAddDomain}
-      />
-
-      {/* Batch Import Modal */}
-      <BatchAddModal
-        isOpen={isBatchModalOpen}
-        onClose={() => setIsBatchModalOpen(false)}
-        onBatchAdd={handleBatchAdd}
-      />
-
-      {/* Standalone QR Studio & Link Mechanism Modal */}
-      <StandaloneQRGeneratorModal
-        isOpen={isQRStudioOpen}
-        onClose={() => setIsQRStudioOpen(false)}
-        onAddToWatchlist={handleAddDomain}
-      />
-
-      {/* Footer */}
-      <footer
-        style={{
-          borderTop: '1px solid var(--border-subtle)',
-          padding: '2rem 0',
-          textAlign: 'center',
-          color: 'var(--text-dim)',
-          fontSize: '0.8125rem',
-        }}
-      >
-        <div className="container">
-          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.4rem', marginBottom: '0.35rem' }}>
-            <ShieldCheck size={16} style={{ color: 'var(--cyan-400)' }} />
-            <strong style={{ color: 'var(--text-main)' }}>CertPulse SSL Monitor</strong>
+          {/* Card 3: CPU Overall */}
+          <div style={{ background: '#ffffff', border: '1px solid #e2e8f0', borderRadius: '12px', padding: '0.75rem 1rem' }}>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+              <span style={{ fontSize: '0.71875rem', color: '#64748b', fontWeight: 600 }}>Rata-rata CPU</span>
+              <Cpu size={16} style={{ color: '#d97706' }} />
+            </div>
+            <div style={{ fontSize: '1.45rem', fontWeight: 800, color: s.avgCpu >= 80 ? '#dc2626' : '#0f172a', marginTop: '0.2rem' }}>
+              {s.avgCpu}%
+            </div>
+            <div style={{ width: '100%', height: '4px', background: '#e2e8f0', borderRadius: '999px', marginTop: '0.35rem', overflow: 'hidden' }}>
+              <div style={{ width: `${Math.min(100, s.avgCpu)}%`, height: '100%', background: '#d97706', borderRadius: '999px' }} />
+            </div>
           </div>
-          <p>
-            Ditenagai oleh Next.js App Router &amp; Native Node.js TLS Certificate Engine. Bekerja secara otomatis tanpa memerlukan autentikasi pihak ketiga.
-          </p>
+
+          {/* Card 4: RAM Overall */}
+          <div style={{ background: '#ffffff', border: '1px solid #e2e8f0', borderRadius: '12px', padding: '0.75rem 1rem' }}>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+              <span style={{ fontSize: '0.71875rem', color: '#64748b', fontWeight: 600 }}>Rata-rata RAM</span>
+              <Activity size={16} style={{ color: '#16a34a' }} />
+            </div>
+            <div style={{ fontSize: '1.45rem', fontWeight: 800, color: s.avgRam >= 85 ? '#dc2626' : '#0f172a', marginTop: '0.2rem' }}>
+              {s.avgRam}%
+            </div>
+            <div style={{ width: '100%', height: '4px', background: '#e2e8f0', borderRadius: '999px', marginTop: '0.35rem', overflow: 'hidden' }}>
+              <div style={{ width: `${Math.min(100, s.avgRam)}%`, height: '100%', background: '#16a34a', borderRadius: '999px' }} />
+            </div>
+          </div>
+
+          {/* Card 5: PM2 Apps */}
+          <Link
+            href="/processes"
+            style={{
+              background: '#ffffff',
+              border: '1px solid #e2e8f0',
+              borderRadius: '12px',
+              padding: '0.75rem 1rem',
+              textDecoration: 'none',
+              boxShadow: '0 1px 2px rgba(0, 0, 0, 0.03)',
+            }}
+          >
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+              <span style={{ fontSize: '0.71875rem', color: '#64748b', fontWeight: 600 }}>PM2 Processes</span>
+              <Layers size={16} style={{ color: '#7c3aed' }} />
+            </div>
+            <div style={{ fontSize: '1.45rem', fontWeight: 800, color: '#0f172a', marginTop: '0.2rem' }}>
+              {pm2.total}
+            </div>
+            <div style={{ fontSize: '0.6875rem', color: pm2.errored > 0 ? '#dc2626' : '#16a34a', fontWeight: 600, marginTop: '0.15rem' }}>
+              {pm2.online} Online {pm2.errored > 0 ? `• ${pm2.errored} Errored` : ''}
+            </div>
+          </Link>
         </div>
-      </footer>
-    </>
+
+        {/* Middle Section: Servers Live Status Grid & Active Incidents */}
+        <div style={{ flex: 1, minHeight: 0, display: 'grid', gridTemplateColumns: '1.4fr 1fr', gap: '0.85rem', overflow: 'hidden' }}>
+          {/* Left: Server Infrastructure Overview */}
+          <div
+            style={{
+              background: '#ffffff',
+              border: '1px solid #e2e8f0',
+              borderRadius: '14px',
+              padding: '1rem',
+              display: 'flex',
+              flexDirection: 'column',
+              overflow: 'hidden',
+              boxShadow: '0 1px 3px rgba(0, 0, 0, 0.04)',
+            }}
+          >
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '0.75rem' }}>
+              <h2 style={{ fontSize: '0.9375rem', fontWeight: 700, color: '#0f172a', margin: 0 }}>
+                Kondisi Server Real-Time
+              </h2>
+              <Link href="/servers" style={{ fontSize: '0.75rem', color: '#2563eb', fontWeight: 600, textDecoration: 'none' }}>
+                Lihat Semua &rarr;
+              </Link>
+            </div>
+
+            <div style={{ flex: 1, minHeight: 0, overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
+              {s.list && s.list.length > 0 ? (
+                s.list.map((srv: any) => {
+                  const isOnline = srv.status === 'ONLINE';
+                  return (
+                    <div
+                      key={srv.id}
+                      style={{
+                        padding: '0.65rem 0.85rem',
+                        borderRadius: '8px',
+                        border: '1px solid #f1f5f9',
+                        background: '#f8fafc',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'space-between',
+                      }}
+                    >
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '0.65rem' }}>
+                        <div style={{ width: '8px', height: '8px', borderRadius: '50%', background: isOnline ? '#16a34a' : '#94a3b8' }} />
+                        <div>
+                          <Link href={`/servers/${srv.id}`} style={{ fontWeight: 700, color: '#0f172a', textDecoration: 'none', fontSize: '0.8125rem' }}>
+                            {srv.name}
+                          </Link>
+                          <div style={{ fontSize: '0.6875rem', color: '#64748b' }}>{srv.ipAddress}</div>
+                        </div>
+                      </div>
+
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '1.25rem', fontSize: '0.75rem' }}>
+                        <div>
+                          <span style={{ color: '#64748b' }}>CPU: </span>
+                          <strong style={{ color: srv.cpu >= 80 ? '#dc2626' : '#0f172a' }}>{srv.cpu.toFixed(1)}%</strong>
+                        </div>
+                        <div>
+                          <span style={{ color: '#64748b' }}>RAM: </span>
+                          <strong style={{ color: srv.ram >= 85 ? '#dc2626' : '#0f172a' }}>{srv.ram.toFixed(1)}%</strong>
+                        </div>
+                        <Link href={`/servers/${srv.id}`} style={{ color: '#2563eb', textDecoration: 'none', fontWeight: 700, fontSize: '0.71875rem' }}>
+                          Detail
+                        </Link>
+                      </div>
+                    </div>
+                  );
+                })
+              ) : (
+                <div style={{ padding: '2.5rem', textAlign: 'center', color: '#64748b', fontSize: '0.8125rem' }}>
+                  Belum ada server yang terdaftar. <Link href="/servers" style={{ color: '#2563eb', fontWeight: 600 }}>Daftarkan VPS</Link>
+                </div>
+              )}
+            </div>
+          </div>
+
+          {/* Right: Active Incidents & Alerts */}
+          <div
+            style={{
+              background: '#ffffff',
+              border: '1px solid #e2e8f0',
+              borderRadius: '14px',
+              padding: '1rem',
+              display: 'flex',
+              flexDirection: 'column',
+              overflow: 'hidden',
+              boxShadow: '0 1px 3px rgba(0, 0, 0, 0.04)',
+            }}
+          >
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '0.75rem' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '0.45rem' }}>
+                <AlertTriangle size={16} style={{ color: '#dc2626' }} />
+                <h2 style={{ fontSize: '0.9375rem', fontWeight: 700, color: '#0f172a', margin: 0 }}>
+                  Insiden &amp; Peringatan Aktif
+                </h2>
+              </div>
+              <Link href="/alerts" style={{ fontSize: '0.75rem', color: '#2563eb', fontWeight: 600, textDecoration: 'none' }}>
+                Lihat Semua &rarr;
+              </Link>
+            </div>
+
+            <div style={{ flex: 1, minHeight: 0, overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
+              {alerts.length > 0 ? (
+                alerts.map((al: any) => (
+                  <div
+                    key={al.id}
+                    style={{
+                      padding: '0.65rem 0.85rem',
+                      borderRadius: '8px',
+                      background: '#fef2f2',
+                      border: '1px solid #fecaca',
+                      fontSize: '0.78125rem',
+                    }}
+                  >
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                      <span style={{ fontWeight: 700, color: '#991b1b' }}>{al.type}</span>
+                      <span style={{ fontSize: '0.6875rem', color: '#b91c1c' }}>
+                        {new Date(al.triggeredAt).toLocaleTimeString('id-ID')}
+                      </span>
+                    </div>
+                    <div style={{ color: '#7f1d1d', marginTop: '0.2rem', lineHeight: 1.4 }}>
+                      {al.message}
+                    </div>
+                  </div>
+                ))
+              ) : (
+                <div style={{ padding: '2.5rem', textAlign: 'center', color: '#16a34a', fontSize: '0.8125rem', fontWeight: 600 }}>
+                  <CheckCircle2 size={24} style={{ margin: '0 auto 0.5rem auto' }} />
+                  Tidak ada insiden aktif. Seluruh sistem normal.
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+      </main>
+    </div>
   );
 }

@@ -6,7 +6,10 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "lint": "eslint"
+    "lint": "eslint",
+    "worker": "node worker/scheduler.js",
+    "agent": "node agent/server-agent.js",
+    "test:system": "node tests/system-check.js"
   },
   "dependencies": {
     "@prisma/client": "^6.19.3",
@@ -17,6 +20,8 @@
     "qrcode": "^1.5.4",
     "react": "19.2.8",
     "react-dom": "19.2.8",
+    "recharts": "^3.10.1",
+    "xlsx": "^0.18.5",
     "zod": "^4.6.5"
   },
   "devDependencies": {

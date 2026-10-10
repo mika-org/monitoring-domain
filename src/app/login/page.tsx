@@ -2,15 +2,12 @@
 
 import React, { useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { ShieldCheck, Lock, User, Mail, ArrowRight, Eye, EyeOff, CheckCircle2, AlertCircle } from 'lucide-react';
+import { Shield, Lock, User, ArrowRight, Eye, EyeOff, CheckCircle2, AlertCircle } from 'lucide-react';
 
 export default function LoginPage() {
   const router = useRouter();
-  const [mode, setMode] = useState<'login' | 'register'>('login');
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
-  const [name, setName] = useState('');
-  const [email, setEmail] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
@@ -23,48 +20,24 @@ export default function LoginPage() {
     setSuccessMessage(null);
 
     try {
-      if (mode === 'login') {
-        const res = await fetch('/api/auth/login', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ username, password }),
-        });
-        const data = await res.json();
+      const res = await fetch('/api/auth/login', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ username, password }),
+      });
+      const data = await res.json();
 
-        if (!res.ok || !data.success) {
-          throw new Error(data.error || 'Login gagal, periksa username dan password Anda');
-        }
-
-        setSuccessMessage('Login berhasil! Mengalihkan ke dashboard...');
-        setTimeout(() => {
-          router.push('/');
-          router.refresh();
-        }, 500);
-      } else {
-        const res = await fetch('/api/auth/register', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            username,
-            password,
-            name: name || undefined,
-            email: email || undefined,
-          }),
-        });
-        const data = await res.json();
-
-        if (!res.ok || !data.success) {
-          throw new Error(data.error || 'Pendaftaran gagal');
-        }
-
-        setSuccessMessage('Akun berhasil dibuat! Mengalihkan ke dashboard...');
-        setTimeout(() => {
-          router.push('/');
-          router.refresh();
-        }, 500);
+      if (!res.ok || !data.success) {
+        throw new Error(data.error || 'Username atau password tidak sesuai');
       }
+
+      setSuccessMessage('Login berhasil. Mengalihkan ke dashboard...');
+      setTimeout(() => {
+        router.push('/');
+        router.refresh();
+      }, 350);
     } catch (err: unknown) {
-      setErrorMessage(err instanceof Error ? err.message : 'Terjadi kesalahan sistem');
+      setErrorMessage(err instanceof Error ? err.message : 'Terjadi kendala pada server');
     } finally {
       setIsLoading(false);
     }
@@ -75,389 +48,329 @@ export default function LoginPage() {
       style={{
         minHeight: '100vh',
         display: 'flex',
+        flexDirection: 'column',
         alignItems: 'center',
         justifyContent: 'center',
         padding: '1.5rem',
-        background: 'var(--bg-main)',
-        backgroundImage: 'var(--bg-gradient)',
-        position: 'relative',
-        overflow: 'hidden',
+        background: '#f8fafc',
+        fontFamily: "var(--font-plus-jakarta), 'Plus Jakarta Sans', sans-serif",
       }}
     >
-      {/* Decorative ambient lights */}
+      {/* Background subtle elements */}
       <div
         style={{
           position: 'absolute',
-          top: '15%',
-          left: '20%',
-          width: '350px',
-          height: '350px',
-          borderRadius: '50%',
-          background: 'rgba(56, 189, 248, 0.08)',
-          filter: 'blur(100px)',
-          pointerEvents: 'none',
-        }}
-      />
-      <div
-        style={{
-          position: 'absolute',
-          bottom: '15%',
-          right: '20%',
-          width: '400px',
-          height: '400px',
-          borderRadius: '50%',
-          background: 'rgba(99, 102, 241, 0.08)',
-          filter: 'blur(120px)',
+          inset: 0,
+          backgroundImage:
+            'radial-gradient(#e2e8f0 1.2px, transparent 1.2px)',
+          backgroundSize: '24px 24px',
+          opacity: 0.8,
           pointerEvents: 'none',
         }}
       />
 
+      {/* Main Container */}
       <div
         style={{
           width: '100%',
-          maxWidth: '430px',
-          background: 'var(--bg-card)',
-          border: '1px solid var(--border-glass)',
-          borderRadius: '1.25rem',
-          padding: '2.5rem 2.25rem',
-          backdropFilter: 'blur(20px)',
-          WebkitBackdropFilter: 'blur(20px)',
-          boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.7), 0 0 0 1px rgba(255, 255, 255, 0.05)',
+          maxWidth: '400px',
           position: 'relative',
           zIndex: 1,
         }}
       >
         {/* Brand Header */}
-        <div style={{ textAlign: 'center', marginBottom: '1.75rem' }}>
+        <div style={{ textAlign: 'center', marginBottom: '2rem' }}>
           <div
             style={{
               display: 'inline-flex',
               alignItems: 'center',
               justifyContent: 'center',
-              width: '56px',
-              height: '56px',
-              borderRadius: '1rem',
-              background: 'linear-gradient(135deg, rgba(56, 189, 248, 0.2), rgba(59, 130, 246, 0.2))',
-              border: '1px solid var(--border-accent)',
-              color: 'var(--cyan-400)',
+              width: '48px',
+              height: '48px',
+              borderRadius: '12px',
+              background: '#2563eb',
+              color: '#ffffff',
               marginBottom: '1rem',
-              boxShadow: '0 0 24px rgba(56, 189, 248, 0.25)',
+              boxShadow: '0 8px 16px -4px rgba(37, 99, 235, 0.35)',
             }}
           >
-            <ShieldCheck size={32} strokeWidth={2.2} />
+            <Shield size={24} strokeWidth={2.4} />
           </div>
           <h1
             style={{
-              fontSize: '1.625rem',
+              fontSize: '1.65rem',
               fontWeight: 700,
-              color: 'var(--text-main)',
+              color: '#0f172a',
               letterSpacing: '-0.025em',
-              marginBottom: '0.35rem',
+              margin: '0 0 0.35rem 0',
             }}
           >
-            CertPulse
+            VioreCert
           </h1>
-          <p style={{ fontSize: '0.85rem', color: 'var(--text-muted)' }}>
-            Monitoring Masa Aktif SSL & Validitas Domain
+          <p
+            style={{
+              fontSize: '0.84375rem',
+              color: '#64748b',
+              margin: 0,
+            }}
+          >
+            Platform Monitoring Keamanan & Sertifikat SSL
           </p>
         </div>
 
-        {/* Tab Switcher */}
+        {/* Card Box */}
         <div
           style={{
-            display: 'grid',
-            gridTemplateColumns: '1fr 1fr',
-            background: 'rgba(15, 23, 42, 0.75)',
-            padding: '0.25rem',
-            borderRadius: '0.75rem',
-            border: '1px solid var(--border-subtle)',
-            marginBottom: '1.75rem',
+            background: '#ffffff',
+            border: '1px solid #e2e8f0',
+            borderRadius: '16px',
+            padding: '2rem',
+            boxShadow:
+              '0 4px 6px -1px rgba(0, 0, 0, 0.05), 0 20px 25px -5px rgba(0, 0, 0, 0.05)',
           }}
         >
-          <button
-            type="button"
-            onClick={() => {
-              setMode('login');
-              setErrorMessage(null);
-            }}
-            style={{
-              padding: '0.55rem 0.5rem',
-              borderRadius: '0.5rem',
-              fontSize: '0.875rem',
-              fontWeight: mode === 'login' ? 600 : 500,
-              color: mode === 'login' ? 'var(--text-main)' : 'var(--text-dim)',
-              background: mode === 'login' ? 'var(--bg-surface-elevated)' : 'transparent',
-              border: mode === 'login' ? '1px solid var(--border-glass)' : '1px solid transparent',
-              cursor: 'pointer',
-              transition: 'all 0.2s ease',
-            }}
-          >
-            Masuk
-          </button>
-          <button
-            type="button"
-            onClick={() => {
-              setMode('register');
-              setErrorMessage(null);
-            }}
-            style={{
-              padding: '0.55rem 0.5rem',
-              borderRadius: '0.5rem',
-              fontSize: '0.875rem',
-              fontWeight: mode === 'register' ? 600 : 500,
-              color: mode === 'register' ? 'var(--text-main)' : 'var(--text-dim)',
-              background: mode === 'register' ? 'var(--bg-surface-elevated)' : 'transparent',
-              border: mode === 'register' ? '1px solid var(--border-glass)' : '1px solid transparent',
-              cursor: 'pointer',
-              transition: 'all 0.2s ease',
-            }}
-          >
-            Daftar Akun
-          </button>
-        </div>
-
-        {/* Error Alert */}
-        {errorMessage && (
-          <div
-            style={{
-              background: 'rgba(239, 68, 68, 0.12)',
-              border: '1px solid rgba(239, 68, 68, 0.35)',
-              color: '#fca5a5',
-              padding: '0.75rem 1rem',
-              borderRadius: '0.625rem',
-              fontSize: '0.8125rem',
-              marginBottom: '1.25rem',
-              display: 'flex',
-              alignItems: 'center',
-              gap: '0.6rem',
-            }}
-          >
-            <AlertCircle size={16} style={{ flexShrink: 0, color: '#f87171' }} />
-            <span>{errorMessage}</span>
+          <div style={{ marginBottom: '1.5rem' }}>
+            <h2 style={{ fontSize: '1.125rem', fontWeight: 700, color: '#0f172a', margin: '0 0 0.25rem 0' }}>
+              Masuk ke Akun
+            </h2>
+            <p style={{ fontSize: '0.8125rem', color: '#64748b', margin: 0 }}>
+              Masukkan kredensial Anda untuk mengakses dashboard
+            </p>
           </div>
-        )}
 
-        {/* Success Alert */}
-        {successMessage && (
-          <div
-            style={{
-              background: 'rgba(16, 185, 129, 0.12)',
-              border: '1px solid rgba(16, 185, 129, 0.35)',
-              color: '#6ee7b7',
-              padding: '0.75rem 1rem',
-              borderRadius: '0.625rem',
-              fontSize: '0.8125rem',
-              marginBottom: '1.25rem',
-              display: 'flex',
-              alignItems: 'center',
-              gap: '0.6rem',
-            }}
+          {/* Error Notice */}
+          {errorMessage && (
+            <div
+              style={{
+                background: '#fef2f2',
+                border: '1px solid #fecaca',
+                color: '#b91c1c',
+                padding: '0.75rem 0.875rem',
+                borderRadius: '8px',
+                fontSize: '0.8125rem',
+                marginBottom: '1.25rem',
+                display: 'flex',
+                alignItems: 'center',
+                gap: '0.5rem',
+              }}
+            >
+              <AlertCircle size={16} style={{ flexShrink: 0 }} />
+              <span>{errorMessage}</span>
+            </div>
+          )}
+
+          {/* Success Notice */}
+          {successMessage && (
+            <div
+              style={{
+                background: '#f0fdf4',
+                border: '1px solid #bbf7d0',
+                color: '#15803d',
+                padding: '0.75rem 0.875rem',
+                borderRadius: '8px',
+                fontSize: '0.8125rem',
+                marginBottom: '1.25rem',
+                display: 'flex',
+                alignItems: 'center',
+                gap: '0.5rem',
+              }}
+            >
+              <CheckCircle2 size={16} style={{ flexShrink: 0 }} />
+              <span>{successMessage}</span>
+            </div>
+          )}
+
+          {/* Form */}
+          <form
+            onSubmit={handleSubmit}
+            style={{ display: 'flex', flexDirection: 'column', gap: '1.125rem' }}
           >
-            <CheckCircle2 size={16} style={{ flexShrink: 0, color: '#34d399' }} />
-            <span>{successMessage}</span>
-          </div>
-        )}
-
-        {/* Form */}
-        <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '1.15rem' }}>
-          {mode === 'register' && (
             <div>
               <label
                 style={{
                   display: 'block',
-                  fontSize: '0.8125rem',
-                  fontWeight: 500,
-                  color: 'var(--text-muted)',
-                  marginBottom: '0.45rem',
+                  fontSize: '0.78125rem',
+                  fontWeight: 600,
+                  color: '#334155',
+                  marginBottom: '0.4rem',
                 }}
               >
-                Nama Lengkap <span style={{ color: 'var(--text-dim)', fontSize: '0.75rem' }}>(Opsional)</span>
+                Username
               </label>
               <div style={{ position: 'relative' }}>
                 <User
                   size={16}
                   style={{
                     position: 'absolute',
-                    left: '0.95rem',
+                    left: '0.85rem',
                     top: '50%',
                     transform: 'translateY(-50%)',
-                    color: 'var(--text-dim)',
+                    color: '#94a3b8',
                     pointerEvents: 'none',
                   }}
                 />
                 <input
                   type="text"
-                  value={name}
-                  onChange={(e) => setName(e.target.value)}
-                  placeholder="Contoh: John Doe"
-                  className="input-text"
-                  style={{ paddingLeft: '2.75rem' }}
+                  required
+                  value={username}
+                  onChange={(e) => setUsername(e.target.value)}
+                  placeholder="Masukkan username"
+                  autoComplete="username"
+                  style={{
+                    width: '100%',
+                    height: '42px',
+                    padding: '0 0.875rem 0 2.45rem',
+                    background: '#f8fafc',
+                    border: '1px solid #cbd5e1',
+                    borderRadius: '8px',
+                    color: '#0f172a',
+                    fontSize: '0.875rem',
+                    outline: 'none',
+                    transition: 'border-color 0.15s ease, box-shadow 0.15s ease',
+                    boxSizing: 'border-box',
+                  }}
+                  onFocus={(e) => {
+                    e.target.style.borderColor = '#2563eb';
+                    e.target.style.background = '#ffffff';
+                  }}
+                  onBlur={(e) => {
+                    e.target.style.borderColor = '#cbd5e1';
+                    e.target.style.background = '#f8fafc';
+                  }}
                 />
               </div>
             </div>
-          )}
 
-          <div>
-            <label
-              style={{
-                display: 'block',
-                fontSize: '0.8125rem',
-                fontWeight: 500,
-                color: 'var(--text-muted)',
-                marginBottom: '0.45rem',
-              }}
-            >
-              Username
-            </label>
-            <div style={{ position: 'relative' }}>
-              <User
-                size={16}
-                style={{
-                  position: 'absolute',
-                  left: '0.95rem',
-                  top: '50%',
-                  transform: 'translateY(-50%)',
-                  color: 'var(--text-dim)',
-                  pointerEvents: 'none',
-                }}
-              />
-              <input
-                type="text"
-                required
-                value={username}
-                onChange={(e) => setUsername(e.target.value)}
-                placeholder="Masukkan username"
-                className="input-text"
-                style={{ paddingLeft: '2.75rem' }}
-                autoComplete="username"
-              />
-            </div>
-          </div>
-
-          {mode === 'register' && (
             <div>
               <label
                 style={{
                   display: 'block',
-                  fontSize: '0.8125rem',
-                  fontWeight: 500,
-                  color: 'var(--text-muted)',
-                  marginBottom: '0.45rem',
+                  fontSize: '0.78125rem',
+                  fontWeight: 600,
+                  color: '#334155',
+                  marginBottom: '0.4rem',
                 }}
               >
-                Email <span style={{ color: 'var(--text-dim)', fontSize: '0.75rem' }}>(Opsional)</span>
+                Password
               </label>
               <div style={{ position: 'relative' }}>
-                <Mail
+                <Lock
                   size={16}
                   style={{
                     position: 'absolute',
-                    left: '0.95rem',
+                    left: '0.85rem',
                     top: '50%',
                     transform: 'translateY(-50%)',
-                    color: 'var(--text-dim)',
+                    color: '#94a3b8',
                     pointerEvents: 'none',
                   }}
                 />
                 <input
-                  type="email"
-                  value={email}
-                  onChange={(e) => setEmail(e.target.value)}
-                  placeholder="admin@domain.com"
-                  className="input-text"
-                  style={{ paddingLeft: '2.75rem' }}
-                  autoComplete="email"
+                  type={showPassword ? 'text' : 'password'}
+                  required
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  placeholder="Masukkan password"
+                  autoComplete="current-password"
+                  style={{
+                    width: '100%',
+                    height: '42px',
+                    padding: '0 2.5rem 0 2.45rem',
+                    background: '#f8fafc',
+                    border: '1px solid #cbd5e1',
+                    borderRadius: '8px',
+                    color: '#0f172a',
+                    fontSize: '0.875rem',
+                    outline: 'none',
+                    transition: 'border-color 0.15s ease, box-shadow 0.15s ease',
+                    boxSizing: 'border-box',
+                  }}
+                  onFocus={(e) => {
+                    e.target.style.borderColor = '#2563eb';
+                    e.target.style.background = '#ffffff';
+                  }}
+                  onBlur={(e) => {
+                    e.target.style.borderColor = '#cbd5e1';
+                    e.target.style.background = '#f8fafc';
+                  }}
                 />
+                <button
+                  type="button"
+                  onClick={() => setShowPassword(!showPassword)}
+                  style={{
+                    position: 'absolute',
+                    right: '0.75rem',
+                    top: '50%',
+                    transform: 'translateY(-50%)',
+                    background: 'none',
+                    border: 'none',
+                    color: '#94a3b8',
+                    cursor: 'pointer',
+                    padding: '0.25rem',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                  }}
+                  onMouseEnter={(e) => ((e.currentTarget as HTMLElement).style.color = '#334155')}
+                  onMouseLeave={(e) => ((e.currentTarget as HTMLElement).style.color = '#94a3b8')}
+                >
+                  {showPassword ? <EyeOff size={16} /> : <Eye size={16} />}
+                </button>
               </div>
             </div>
-          )}
 
-          <div>
-            <label
+            <button
+              type="submit"
+              disabled={isLoading}
               style={{
-                display: 'block',
-                fontSize: '0.8125rem',
-                fontWeight: 500,
-                color: 'var(--text-muted)',
-                marginBottom: '0.45rem',
+                width: '100%',
+                height: '42px',
+                marginTop: '0.5rem',
+                background: '#2563eb',
+                color: '#ffffff',
+                border: 'none',
+                borderRadius: '8px',
+                fontSize: '0.875rem',
+                fontWeight: 600,
+                cursor: isLoading ? 'not-allowed' : 'pointer',
+                opacity: isLoading ? 0.7 : 1,
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                gap: '0.5rem',
+                transition: 'background-color 0.15s ease',
+                boxShadow: '0 2px 4px rgba(37, 99, 235, 0.25)',
+              }}
+              onMouseEnter={(e) => {
+                if (!isLoading) (e.currentTarget as HTMLElement).style.background = '#1d4ed8';
+              }}
+              onMouseLeave={(e) => {
+                if (!isLoading) (e.currentTarget as HTMLElement).style.background = '#2563eb';
               }}
             >
-              Password
-            </label>
-            <div style={{ position: 'relative' }}>
-              <Lock
-                size={16}
-                style={{
-                  position: 'absolute',
-                  left: '0.95rem',
-                  top: '50%',
-                  transform: 'translateY(-50%)',
-                  color: 'var(--text-dim)',
-                  pointerEvents: 'none',
-                }}
-              />
-              <input
-                type={showPassword ? 'text' : 'password'}
-                required
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                placeholder="Masukkan password"
-                className="input-text"
-                style={{ paddingLeft: '2.75rem', paddingRight: '2.75rem' }}
-                autoComplete={mode === 'login' ? 'current-password' : 'new-password'}
-              />
-              <button
-                type="button"
-                onClick={() => setShowPassword(!showPassword)}
-                title={showPassword ? 'Sembunyikan password' : 'Lihat password'}
-                style={{
-                  position: 'absolute',
-                  right: '0.85rem',
-                  top: '50%',
-                  transform: 'translateY(-50%)',
-                  background: 'none',
-                  border: 'none',
-                  color: 'var(--text-dim)',
-                  cursor: 'pointer',
-                  padding: '0.35rem',
-                  borderRadius: '0.375rem',
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  transition: 'color 0.15s ease',
-                }}
-                onMouseEnter={(e) => ((e.currentTarget as HTMLElement).style.color = 'var(--text-main)')}
-                onMouseLeave={(e) => ((e.currentTarget as HTMLElement).style.color = 'var(--text-dim)')}
-              >
-                {showPassword ? <EyeOff size={16} /> : <Eye size={16} />}
-              </button>
-            </div>
-          </div>
+              {isLoading ? (
+                <span>Memproses...</span>
+              ) : (
+                <>
+                  <span>Masuk ke Dashboard</span>
+                  <ArrowRight size={16} />
+                </>
+              )}
+            </button>
+          </form>
+        </div>
 
-          <button
-            type="submit"
-            disabled={isLoading}
-            className="btn btn-primary"
-            style={{
-              width: '100%',
-              marginTop: '0.65rem',
-              padding: '0.8rem',
-              fontSize: '0.9375rem',
-              fontWeight: 600,
-              justifyContent: 'center',
-              borderRadius: 'var(--radius-md)',
-            }}
-          >
-            {isLoading ? (
-              <span>Memproses...</span>
-            ) : (
-              <>
-                <span>{mode === 'login' ? 'Masuk ke Dashboard' : 'Buat Akun'}</span>
-                <ArrowRight size={16} />
-              </>
-            )}
-          </button>
-        </form>
+        {/* Footer */}
+        <div
+          style={{
+            textAlign: 'center',
+            marginTop: '1.75rem',
+            fontSize: '0.78125rem',
+            color: '#64748b',
+          }}
+        >
+          VioreCert &bull; Infrastruktur Monitoring SSL &copy; {new Date().getFullYear()}
+        </div>
       </div>
     </div>
   );

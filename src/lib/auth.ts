@@ -4,10 +4,10 @@ import { cookies } from 'next/headers';
 import { prisma } from './prisma';
 
 const JWT_SECRET = new TextEncoder().encode(
-  process.env.JWT_SECRET || 'certpulse-super-secret-jwt-key-2026-secure'
+  process.env.JWT_SECRET || 'viorecert-super-secret-jwt-key-2026-secure'
 );
 
-export const AUTH_COOKIE_NAME = 'certpulse_session';
+export const AUTH_COOKIE_NAME = 'viorecert_session';
 
 export interface UserSession {
   id: string;

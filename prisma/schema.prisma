@@ -7,18 +7,227 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
+enum UserRole {
+  SUPER_ADMIN
+  ADMIN
+  VIEWER
+}
+
 model User {
-  id        String   @id @default(cuid())
-  username  String   @unique
-  email     String?  @unique
+  id        String     @id @default(cuid())
+  username  String     @unique
+  email     String?    @unique
   password  String
   name      String?
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  role      UserRole   @default(ADMIN)
+  createdAt DateTime   @default(now())
+  updatedAt DateTime   @updatedAt
+  auditLogs AuditLog[]
 
   @@map("users")
 }
 
+model Server {
+  id            String          @id @default(cuid())
+  name          String
+  hostname      String?
+  ipAddress     String
+  os            String?
+  kernelVersion String?
+  cpuModel      String?
+  cpuCores      Int?
+  totalRam      Float?          // in GB
+  totalDisk     Float?          // in GB
+  status        String          @default("OFFLINE") // ONLINE, OFFLINE, WARNING
+  uptime        BigInt?         @default(0)
+  lastHeartbeat DateTime?
+  agentStatus   String          @default("PENDING") // ACTIVE, INACTIVE, PENDING
+  createdAt     DateTime        @default(now())
+  updatedAt     DateTime        @updatedAt
+
+  agent         ServerAgent?
+  metrics       ServerMetric[]
+  pm2Processes  Pm2Process[]
+  nginxServices NginxService[]
+  alerts        Alert[]
+
+  @@map("servers")
+}
+
+model ServerAgent {
+  id         String    @id @default(cuid())
+  serverId   String    @unique
+  server     Server    @relation(fields: [serverId], references: [id], onDelete: Cascade)
+  tokenHash  String    @unique
+  version    String?
+  status     String    @default("ACTIVE")
+  lastSeenAt DateTime?
+  createdAt  DateTime  @default(now())
+
+  @@map("server_agents")
+}
+
+model ServerMetric {
+  id              String   @id @default(cuid())
+  serverId        String
+  server          Server   @relation(fields: [serverId], references: [id], onDelete: Cascade)
+  cpuUsage        Float
+  ramTotal        Float    // in GB
+  ramUsed         Float    // in GB
+  ramUsagePercent Float
+  diskUsage       Json?    // mount points usage details
+  networkIn       Float?   @default(0) // KB/s
+  networkOut      Float?   @default(0) // KB/s
+  load1           Float?
+  load5           Float?
+  load15          Float?
+  uptime          BigInt?
+  timestamp       DateTime @default(now())
+
+  @@index([serverId, timestamp])
+  @@map("server_metrics")
+}
+
+model Website {
+  id               String         @id @default(cuid())
+  url              String         @unique
+  name             String
+  interval         Int            @default(60) // seconds
+  isMonitored      Boolean        @default(true)
+  status           String         @default("UNKNOWN") // UP, DOWN, WARNING
+  statusCode       Int?
+  responseTime     Float?         // in ms
+  sslDaysRemaining Int?
+  sslIssuer        String?
+  sslExpiry        DateTime?
+  lastCheckedAt    DateTime?
+  createdAt        DateTime       @default(now())
+  updatedAt        DateTime       @updatedAt
+
+  checks           WebsiteCheck[]
+  alerts           Alert[]
+
+  @@map("websites")
+}
+
+model WebsiteCheck {
+  id               String   @id @default(cuid())
+  websiteId        String
+  website          Website  @relation(fields: [websiteId], references: [id], onDelete: Cascade)
+  statusCode       Int?
+  responseTime     Float?   // in ms
+  status           String   // UP, DOWN, ERROR
+  sslDaysRemaining Int?
+  error            String?
+  checkedAt        DateTime @default(now())
+
+  @@index([websiteId, checkedAt])
+  @@map("website_checks")
+}
+
+model Pm2Process {
+  id          String   @id @default(cuid())
+  serverId    String
+  server      Server   @relation(fields: [serverId], references: [id], onDelete: Cascade)
+  name        String
+  pmId        Int
+  status      String   // ONLINE, STOPPED, ERRORED
+  cpu         Float    @default(0) // %
+  memory      Float    @default(0) // MB
+  restarts    Int      @default(0)
+  uptime      BigInt   @default(0) // seconds
+  nodeVersion String?
+  lastSeenAt  DateTime @default(now())
+
+  @@unique([serverId, name, pmId])
+  @@map("pm2_processes")
+}
+
+model NginxService {
+  id            String   @id @default(cuid())
+  serverId      String
+  server        Server   @relation(fields: [serverId], references: [id], onDelete: Cascade)
+  status        String   // ACTIVE, INACTIVE, FAILED
+  version       String?
+  ports         Json?    // e.g. [80, 443]
+  vhostsCount   Int?
+  lastCheckedAt DateTime @default(now())
+
+  @@map("nginx_services")
+}
+
+model Alert {
+  id          String            @id @default(cuid())
+  serverId    String?
+  server      Server?           @relation(fields: [serverId], references: [id], onDelete: Cascade)
+  websiteId   String?
+  website     Website?          @relation(fields: [websiteId], references: [id], onDelete: Cascade)
+  type        String            // CPU_HIGH, RAM_HIGH, DISK_HIGH, SERVER_OFFLINE, WEBSITE_DOWN, SSL_EXPIRING, PM2_ERRORED, NGINX_INACTIVE
+  severity    String            // INFO, WARNING, CRITICAL
+  message     String
+  status      String            @default("TRIGGERED") // TRIGGERED, ACKNOWLEDGED, RESOLVED
+  triggeredAt DateTime          @default(now())
+  resolvedAt  DateTime?
+
+  logs        NotificationLog[]
+
+  @@index([status, triggeredAt])
+  @@map("alerts")
+}
+
+model NotificationChannel {
+  id        String            @id @default(cuid())
+  name      String
+  type      String            // TELEGRAM, EMAIL, WEBHOOK
+  config    Json              // { botToken, chatId, etc }
+  isEnabled Boolean           @default(true)
+  createdAt DateTime          @default(now())
+
+  logs      NotificationLog[]
+
+  @@map("notification_channels")
+}
+
+model NotificationLog {
+  id        String              @id @default(cuid())
+  alertId   String?
+  alert     Alert?              @relation(fields: [alertId], references: [id], onDelete: Cascade)
+  channelId String
+  channel   NotificationChannel @relation(fields: [channelId], references: [id], onDelete: Cascade)
+  status    String              // SENT, FAILED
+  error     String?
+  sentAt    DateTime            @default(now())
+
+  @@map("notification_logs")
+}
+
+model Integration {
+  id           String    @id @default(cuid())
+  name         String
+  provider     String    @unique // BIZNET
+  config       Json?
+  status       String    @default("NOT_CONFIGURED") // CONNECTED, DISCONNECTED, NOT_CONFIGURED, NOT_SUPPORTED
+  lastSyncedAt DateTime?
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
+
+  @@map("integrations")
+}
+
+model AuditLog {
+  id        String   @id @default(cuid())
+  userId    String?
+  user      User?    @relation(fields: [userId], references: [id], onDelete: SetNull)
+  action    String
+  details   Json?
+  ipAddress String?
+  createdAt DateTime @default(now())
+
+  @@index([createdAt])
+  @@map("audit_logs")
+}
+
+// Backward compatibility for existing domain checks
 model MonitoredDomain {
   id        String   @id @default(cuid())
   domain    String

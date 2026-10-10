@@ -13,8 +13,6 @@ import {
   Plus,
   Trash2,
   Sliders,
-  ShieldCheck,
-  BookmarkPlus,
   Sparkles,
   Link as LinkIcon,
   Palette,
@@ -40,13 +38,12 @@ const COLOR_PRESETS = [
   { label: 'Deep Indigo', dark: '#1e1b4b', light: '#ffffff' },
   { label: 'Ocean Blue', dark: '#0369a1', light: '#f0f9ff' },
   { label: 'Emerald Green', dark: '#065f46', light: '#ecfdf5' },
-  { label: 'Neon Cyber', dark: '#06b6d4', light: '#090d16' },
+  { label: 'Neon Cyber', dark: '#06b6d4', light: '#ffffff' },
 ];
 
 export const StandaloneQRGeneratorModal: React.FC<StandaloneQRGeneratorModalProps> = ({
   isOpen,
   onClose,
-  onAddToWatchlist,
   initialDomain = '',
 }) => {
   // Link Mechanism State
@@ -62,74 +59,66 @@ export const StandaloneQRGeneratorModal: React.FC<StandaloneQRGeneratorModalProp
   // QR Customization State
   const [qrSize, setQrSize] = useState<number>(400);
   const [cardPadding, setCardPadding] = useState<number>(16);
-  const [darkColor, setDarkColor] = useState('#090d16');
+  const [darkColor, setDarkColor] = useState('#0f172a');
   const [lightColor, setLightColor] = useState('#ffffff');
-  const [errorCorrection, setErrorCorrection] = useState<'L' | 'M' | 'Q' | 'H'>('H');
   const [margin, setMargin] = useState<number>(2);
 
   // Output States
   const [qrPngUrl, setQrPngUrl] = useState<string>('');
   const [copiedUrl, setCopiedUrl] = useState(false);
   const [copiedImage, setCopiedImage] = useState(false);
-  const [isAddingWatchlist, setIsAddingWatchlist] = useState(false);
-  const [addedSuccess, setAddedSuccess] = useState(false);
   const [activeTab, setActiveTab] = useState<'link' | 'style'>('link');
 
   useEffect(() => {
     if (initialDomain) {
       const parsed = parseDomainInput(initialDomain);
-      setRawDomain(parsed.host);
-      if (parsed.port && parsed.port !== 443 && parsed.port !== 80) {
-        setPort(String(parsed.port));
+      if (parsed.host) {
+        setRawDomain(parsed.host);
+        if (parsed.port && parsed.port !== 443 && parsed.port !== 80) {
+          setPort(parsed.port.toString());
+        }
       }
     }
   }, [initialDomain]);
 
-  // Construct final URL
+  // Construct target URL
   const constructedUrl = useMemo(() => {
-    let host = rawDomain.trim();
-    if (!host) return '';
+    const cleanedDomain = rawDomain.trim().replace(/^https?:\/\//i, '').replace(/\/.*$/, '');
+    if (!cleanedDomain) return '';
 
-    // Strip existing protocol if typed by user
-    if (host.startsWith('https://')) {
-      host = host.slice(8);
-    } else if (host.startsWith('http://')) {
-      host = host.slice(7);
+    let url = `${protocol}${cleanedDomain}`;
+
+    if (port.trim()) {
+      const parsedPort = parseInt(port.trim(), 10);
+      if (!isNaN(parsedPort) && parsedPort > 0 && parsedPort !== 443 && parsedPort !== 80) {
+        url += `:${parsedPort}`;
+      }
     }
 
-    // Strip trailing slash from host
-    if (host.endsWith('/')) {
-      host = host.slice(0, -1);
+    if (path.trim()) {
+      let cleanPath = path.trim();
+      if (!cleanPath.startsWith('/')) cleanPath = `/${cleanPath}`;
+      url += cleanPath;
     }
 
-    const portPart = port.trim() && port.trim() !== '443' && port.trim() !== '80' ? `:${port.trim()}` : '';
-    
-    let pathPart = path.trim();
-    if (pathPart && !pathPart.startsWith('/')) {
-      pathPart = `/${pathPart}`;
-    }
-
-    // Build query params
-    const validParams = queryParams.filter((p) => p.key.trim().length > 0);
-    let queryPart = '';
+    const validParams = queryParams.filter((p) => p.key.trim() && p.value.trim());
     if (validParams.length > 0) {
       const searchParams = new URLSearchParams();
-      validParams.forEach((p) => {
-        searchParams.append(p.key.trim(), p.value.trim());
-      });
-      queryPart = `?${searchParams.toString()}`;
+      validParams.forEach((p) => searchParams.append(p.key.trim(), p.value.trim()));
+      url += `?${searchParams.toString()}`;
     }
 
-    let hashPart = hash.trim();
-    if (hashPart && !hashPart.startsWith('#')) {
-      hashPart = `#${hashPart}`;
+    if (hash.trim()) {
+      let cleanHash = hash.trim();
+      if (!cleanHash.startsWith('#')) cleanHash = `#${cleanHash}`;
+      url += cleanHash;
     }
 
-    return `${protocol}${host}${portPart}${pathPart}${queryPart}${hashPart}`;
+    return url;
   }, [protocol, rawDomain, port, path, queryParams, hash]);
 
-  // Generate QR Code data
-  const renderQRCode = useCallback(async () => {
+  // Generate QR Code PNG
+  const generateQRCode = useCallback(async () => {
     if (!constructedUrl) {
       setQrPngUrl('');
       return;
@@ -138,205 +127,234 @@ export const StandaloneQRGeneratorModal: React.FC<StandaloneQRGeneratorModalProp
     try {
       const dataUrl = await QRCode.toDataURL(constructedUrl, {
         width: qrSize,
-        margin,
-        errorCorrectionLevel: errorCorrection,
+        margin: margin,
         color: {
           dark: darkColor,
           light: lightColor,
         },
+        errorCorrectionLevel: 'H',
       });
       setQrPngUrl(dataUrl);
     } catch (err) {
-      console.error('Failed generating QR code', err);
+      console.error('Error generating QR:', err);
     }
-  }, [constructedUrl, qrSize, margin, errorCorrection, darkColor, lightColor]);
+  }, [constructedUrl, qrSize, margin, darkColor, lightColor]);
 
   useEffect(() => {
-    if (isOpen) {
-      renderQRCode();
-    }
-  }, [isOpen, renderQRCode]);
+    generateQRCode();
+  }, [generateQRCode]);
 
-  if (!isOpen) return null;
-
-  // Add query param row
   const addQueryParam = () => {
     setQueryParams((prev) => [
       ...prev,
-      { id: String(Date.now()), key: '', value: '' },
+      { id: Date.now().toString(), key: '', value: '' },
     ]);
   };
 
-  // Remove query param row
   const removeQueryParam = (id: string) => {
     setQueryParams((prev) => prev.filter((p) => p.id !== id));
   };
 
-  // Update query param
   const updateQueryParam = (id: string, field: 'key' | 'value', val: string) => {
     setQueryParams((prev) =>
       prev.map((p) => (p.id === id ? { ...p, [field]: val } : p))
     );
   };
 
-  // Download PNG with card padding
-  const handleDownloadPNG = () => {
-    if (!qrPngUrl) return;
-    const img = new Image();
-    img.crossOrigin = 'anonymous';
-    img.onload = () => {
-      const pad = Math.round((cardPadding / 220) * qrSize);
-      const canvas = document.createElement('canvas');
-      canvas.width = qrSize + pad * 2;
-      canvas.height = qrSize + pad * 2;
-      const ctx = canvas.getContext('2d');
-      if (ctx) {
-        ctx.fillStyle = lightColor;
-        ctx.fillRect(0, 0, canvas.width, canvas.height);
-        ctx.drawImage(img, pad, pad, qrSize, qrSize);
-        const finalUrl = canvas.toDataURL('image/png');
-        const link = document.createElement('a');
-        link.href = finalUrl;
-        const cleanName = (rawDomain || 'domain').replace(/[^a-zA-Z0-9]/g, '-');
-        link.download = `qrcode-${cleanName}-${qrSize}px.png`;
-        document.body.appendChild(link);
-        link.click();
-        document.body.removeChild(link);
-      }
-    };
-    img.src = qrPngUrl;
-  };
-
-  // Download SVG
-  const handleDownloadSVG = async () => {
-    if (!constructedUrl) return;
-    try {
-      const svgString = await QRCode.toString(constructedUrl, {
-        type: 'svg',
-        margin,
-        errorCorrectionLevel: errorCorrection,
-        color: {
-          dark: darkColor,
-          light: lightColor,
-        },
-      });
-      const blob = new Blob([svgString], { type: 'image/svg+xml;charset=utf-8' });
-      const url = URL.createObjectURL(blob);
-      const link = document.createElement('a');
-      link.href = url;
-      const cleanName = (rawDomain || 'domain').replace(/[^a-zA-Z0-9]/g, '-');
-      link.download = `qrcode-${cleanName}.svg`;
-      document.body.appendChild(link);
-      link.click();
-      document.body.removeChild(link);
-      URL.revokeObjectURL(url);
-    } catch (err) {
-      console.error('Failed generating SVG', err);
-    }
-  };
-
-  // Copy URL
   const handleCopyUrl = async () => {
     if (!constructedUrl) return;
     try {
       await navigator.clipboard.writeText(constructedUrl);
       setCopiedUrl(true);
       setTimeout(() => setCopiedUrl(false), 2000);
-    } catch (err) {
-      console.error('Failed copying URL', err);
+    } catch {
+      // Fallback
     }
   };
 
-  // Copy Image to Clipboard with card padding
+  const handleDownloadPNG = () => {
+    if (!qrPngUrl) return;
+    const cleanName = (rawDomain || 'link').replace(/[^a-zA-Z0-9]/g, '_');
+    const a = document.createElement('a');
+    a.href = qrPngUrl;
+    a.download = `qrcode_${cleanName}_${qrSize}px.png`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+  };
+
+  const handleDownloadSVG = async () => {
+    if (!constructedUrl) return;
+    try {
+      const svgString = await QRCode.toString(constructedUrl, {
+        type: 'svg',
+        width: qrSize,
+        margin: margin,
+        color: {
+          dark: darkColor,
+          light: lightColor,
+        },
+        errorCorrectionLevel: 'H',
+      });
+
+      const blob = new Blob([svgString], { type: 'image/svg+xml;charset=utf-8' });
+      const url = URL.createObjectURL(blob);
+      const cleanName = (rawDomain || 'link').replace(/[^a-zA-Z0-9]/g, '_');
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `qrcode_${cleanName}.svg`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+    } catch (err) {
+      console.error('Error exporting SVG:', err);
+    }
+  };
+
   const handleCopyImage = async () => {
     if (!qrPngUrl) return;
     try {
-      const img = new Image();
-      img.crossOrigin = 'anonymous';
-      img.onload = () => {
-        const pad = Math.round((cardPadding / 220) * qrSize);
-        const canvas = document.createElement('canvas');
-        canvas.width = qrSize + pad * 2;
-        canvas.height = qrSize + pad * 2;
-        const ctx = canvas.getContext('2d');
-        if (ctx) {
-          ctx.fillStyle = lightColor;
-          ctx.fillRect(0, 0, canvas.width, canvas.height);
-          ctx.drawImage(img, pad, pad, qrSize, qrSize);
-          canvas.toBlob(async (blob) => {
-            if (blob) {
-              await navigator.clipboard.write([
-                new ClipboardItem({ 'image/png': blob }),
-              ]);
-              setCopiedImage(true);
-              setTimeout(() => setCopiedImage(false), 2000);
-            }
-          }, 'image/png');
-        }
-      };
-      img.src = qrPngUrl;
+      const res = await fetch(qrPngUrl);
+      const blob = await res.blob();
+      await navigator.clipboard.write([
+        new ClipboardItem({ 'image/png': blob }),
+      ]);
+      setCopiedImage(true);
+      setTimeout(() => setCopiedImage(false), 2000);
     } catch (err) {
-      console.error('Failed copying QR image', err);
+      console.error('Clipboard copy failed:', err);
     }
   };
 
-  // Add domain to monitoring watchlist
-  const handleAddToWatchlist = async () => {
-    if (!onAddToWatchlist || !rawDomain.trim()) return;
-    setIsAddingWatchlist(true);
-    try {
-      const parsedPort = port ? parseInt(port, 10) : 443;
-      const success = await onAddToWatchlist(rawDomain.trim(), parsedPort);
-      if (success) {
-        setAddedSuccess(true);
-      }
-    } finally {
-      setIsAddingWatchlist(false);
-    }
-  };
+  if (!isOpen) return null;
 
   return (
-    <div className="modal-overlay" onClick={onClose}>
+    <div
+      style={{
+        position: 'fixed',
+        inset: 0,
+        zIndex: 9999,
+        background: 'rgba(15, 23, 42, 0.6)',
+        backdropFilter: 'blur(5px)',
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        padding: '1.25rem',
+      }}
+      onClick={onClose}
+    >
       <div
-        className="modal-content"
+        style={{
+          width: '100%',
+          maxWidth: '890px',
+          background: '#ffffff',
+          borderRadius: '16px',
+          boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.25)',
+          overflow: 'hidden',
+          border: '1px solid #e2e8f0',
+        }}
         onClick={(e) => e.stopPropagation()}
-        style={{ maxWidth: '820px', width: '95%' }}
       >
-        <div className="modal-header">
-          <div className="modal-title">
-            <QrCode size={20} style={{ color: 'var(--cyan-400)' }} />
-            <span>Studio Generator QR Code Domain &amp; Link</span>
+        {/* Header */}
+        <div
+          style={{
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'space-between',
+            padding: '1.25rem 1.75rem',
+            borderBottom: '1px solid #e2e8f0',
+            background: '#ffffff',
+          }}
+        >
+          <div style={{ display: 'flex', alignItems: 'center', gap: '0.65rem' }}>
+            <div
+              style={{
+                width: '36px',
+                height: '36px',
+                borderRadius: '10px',
+                background: '#eff6ff',
+                color: '#2563eb',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+              }}
+            >
+              <QrCode size={20} />
+            </div>
+            <h2 style={{ fontSize: '1.125rem', fontWeight: 700, color: '#0f172a', margin: 0 }}>
+              Studio Generator QR Code Domain &amp; Link
+            </h2>
           </div>
-          <button type="button" className="btn btn-ghost btn-icon" onClick={onClose}>
-            <X size={18} />
+          <button
+            type="button"
+            onClick={onClose}
+            style={{
+              background: 'none',
+              border: 'none',
+              color: '#64748b',
+              cursor: 'pointer',
+              padding: '0.4rem',
+              borderRadius: '8px',
+            }}
+          >
+            <X size={20} />
           </button>
         </div>
 
+        {/* Modal Body */}
         <div
-          className="modal-body"
           style={{
+            padding: '1.75rem',
             display: 'grid',
-            gridTemplateColumns: '1.2fr 1fr',
-            gap: '1.5rem',
-            alignItems: 'start',
+            gridTemplateColumns: '1.15fr 1fr',
+            gap: '1.75rem',
+            maxHeight: '76vh',
+            overflowY: 'auto',
           }}
         >
-          {/* Left Column: Link Builder & Configuration */}
+          {/* Left Column: Form & Link Builder */}
           <div style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
             {/* Tab navigation */}
-            <div style={{ display: 'flex', gap: '0.5rem', borderBottom: '1px solid var(--border-subtle)', paddingBottom: '0.75rem' }}>
+            <div style={{ display: 'flex', gap: '0.5rem' }}>
               <button
                 type="button"
-                className={`btn btn-sm ${activeTab === 'link' ? 'btn-primary' : 'btn-ghost'}`}
                 onClick={() => setActiveTab('link')}
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '0.4rem',
+                  padding: '0.5rem 0.9rem',
+                  borderRadius: '8px',
+                  fontSize: '0.8125rem',
+                  fontWeight: 600,
+                  cursor: 'pointer',
+                  border: 'none',
+                  background: activeTab === 'link' ? '#2563eb' : '#f1f5f9',
+                  color: activeTab === 'link' ? '#ffffff' : '#475569',
+                  transition: 'all 0.15s ease',
+                }}
               >
                 <LinkIcon size={14} />
                 <span>Mekanisme Link &amp; Domain</span>
               </button>
               <button
                 type="button"
-                className={`btn btn-sm ${activeTab === 'style' ? 'btn-primary' : 'btn-ghost'}`}
                 onClick={() => setActiveTab('style')}
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '0.4rem',
+                  padding: '0.5rem 0.9rem',
+                  borderRadius: '8px',
+                  fontSize: '0.8125rem',
+                  fontWeight: 600,
+                  cursor: 'pointer',
+                  border: 'none',
+                  background: activeTab === 'style' ? '#2563eb' : '#f1f5f9',
+                  color: activeTab === 'style' ? '#ffffff' : '#475569',
+                  transition: 'all 0.15s ease',
+                }}
               >
                 <Palette size={14} />
                 <span>Kustomisasi Gaya &amp; Warna</span>
@@ -344,18 +362,36 @@ export const StandaloneQRGeneratorModal: React.FC<StandaloneQRGeneratorModalProp
             </div>
 
             {activeTab === 'link' ? (
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
-                {/* Protocol + Domain Input */}
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '1.1rem' }}>
+                {/* 1. Protokol & Nama Domain */}
                 <div>
-                  <label style={{ display: 'block', fontSize: '0.75rem', fontWeight: 600, color: 'var(--text-muted)', marginBottom: '0.35rem', textTransform: 'uppercase' }}>
-                    1. Protokol &amp; Nama Domain <span style={{ color: 'var(--status-critical-text)' }}>*</span>
+                  <label
+                    style={{
+                      display: 'block',
+                      fontSize: '0.75rem',
+                      fontWeight: 700,
+                      color: '#475569',
+                      marginBottom: '0.4rem',
+                      textTransform: 'uppercase',
+                      letterSpacing: '0.03em',
+                    }}
+                  >
+                    1. PROTOKOL &amp; NAMA DOMAIN <span style={{ color: '#ef4444' }}>*</span>
                   </label>
                   <div style={{ display: 'flex', gap: '0.5rem' }}>
                     <select
-                      className="sort-select"
                       value={protocol}
-                      onChange={(e) => setProtocol(e.target.value as any)}
-                      style={{ padding: '0.7rem 0.5rem', fontSize: '0.875rem' }}
+                      onChange={(e) => setProtocol(e.target.value as 'https://' | 'http://')}
+                      style={{
+                        padding: '0.6rem 0.6rem',
+                        fontSize: '0.84375rem',
+                        border: '1px solid #cbd5e1',
+                        borderRadius: '8px',
+                        background: '#ffffff',
+                        color: '#0f172a',
+                        fontWeight: 600,
+                        outline: 'none',
+                      }}
                     >
                       <option value="https://">https://</option>
                       <option value="http://">http://</option>
@@ -366,147 +402,247 @@ export const StandaloneQRGeneratorModal: React.FC<StandaloneQRGeneratorModalProp
                         size={16}
                         style={{
                           position: 'absolute',
-                          left: '0.875rem',
+                          left: '0.85rem',
                           top: '50%',
                           transform: 'translateY(-50%)',
-                          color: 'var(--text-dim)',
+                          color: '#94a3b8',
+                          pointerEvents: 'none',
                         }}
                       />
                       <input
                         type="text"
-                        className="input-text"
-                        placeholder="domain.com atau sub.domain.id"
+                        placeholder="domain.com atau sub.domain"
                         value={rawDomain}
                         onChange={(e) => setRawDomain(e.target.value)}
-                        autoFocus
+                        style={{
+                          width: '100%',
+                          height: '40px',
+                          padding: '0 0.75rem 0 2.45rem',
+                          border: '1px solid #cbd5e1',
+                          borderRadius: '8px',
+                          background: '#ffffff',
+                          color: '#0f172a',
+                          fontSize: '0.84375rem',
+                          outline: 'none',
+                          boxSizing: 'border-box',
+                        }}
                       />
                     </div>
 
                     <input
                       type="number"
-                      className="input-text"
                       placeholder="Port"
-                      style={{ width: '80px', paddingLeft: '0.75rem' }}
                       value={port}
                       onChange={(e) => setPort(e.target.value)}
+                      style={{
+                        width: '85px',
+                        height: '40px',
+                        padding: '0 0.6rem',
+                        border: '1px solid #cbd5e1',
+                        borderRadius: '8px',
+                        background: '#ffffff',
+                        color: '#0f172a',
+                        fontSize: '0.84375rem',
+                        outline: 'none',
+                        boxSizing: 'border-box',
+                      }}
                     />
                   </div>
                 </div>
 
-                {/* Path / Halaman Spesifik */}
+                {/* 2. Path */}
                 <div>
-                  <label style={{ display: 'block', fontSize: '0.75rem', fontWeight: 600, color: 'var(--text-muted)', marginBottom: '0.35rem', textTransform: 'uppercase' }}>
-                    2. Path / Rute Halaman (Opsional)
+                  <label
+                    style={{
+                      display: 'block',
+                      fontSize: '0.75rem',
+                      fontWeight: 700,
+                      color: '#475569',
+                      marginBottom: '0.4rem',
+                      textTransform: 'uppercase',
+                      letterSpacing: '0.03em',
+                    }}
+                  >
+                    2. PATH / RUTE HALAMAN (OPSIONAL)
                   </label>
                   <input
                     type="text"
-                    className="input-text"
                     placeholder="/login, /promo/event-2026, /produk/detail"
-                    style={{ paddingLeft: '1rem' }}
                     value={path}
                     onChange={(e) => setPath(e.target.value)}
+                    style={{
+                      width: '100%',
+                      height: '40px',
+                      padding: '0 0.85rem',
+                      border: '1px solid #cbd5e1',
+                      borderRadius: '8px',
+                      background: '#ffffff',
+                      color: '#0f172a',
+                      fontSize: '0.84375rem',
+                      outline: 'none',
+                      boxSizing: 'border-box',
+                    }}
                   />
                 </div>
 
-                {/* Query Parameters Builder */}
+                {/* 3. Query Parameter Builder */}
                 <div>
                   <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.4rem' }}>
-                    <label style={{ fontSize: '0.75rem', fontWeight: 600, color: 'var(--text-muted)', textTransform: 'uppercase' }}>
-                      3. Query Parameter Builder (?key=val)
+                    <label
+                      style={{
+                        fontSize: '0.75rem',
+                        fontWeight: 700,
+                        color: '#475569',
+                        textTransform: 'uppercase',
+                        letterSpacing: '0.03em',
+                      }}
+                    >
+                      3. QUERY PARAMETER BUILDER (?KEY=VAL)
                     </label>
                     <button
                       type="button"
-                      className="btn btn-ghost btn-sm"
-                      style={{ fontSize: '0.75rem', padding: '0.2rem 0.5rem' }}
                       onClick={addQueryParam}
+                      style={{
+                        background: 'none',
+                        border: 'none',
+                        color: '#2563eb',
+                        fontSize: '0.78125rem',
+                        fontWeight: 600,
+                        cursor: 'pointer',
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: '0.25rem',
+                      }}
                     >
-                      <Plus size={12} /> Tambah Parameter
+                      <Plus size={14} /> Tambah Parameter
                     </button>
                   </div>
 
-                  {queryParams.length === 0 ? (
-                    <div style={{ fontSize: '0.8rem', color: 'var(--text-dim)', fontStyle: 'italic', padding: '0.5rem 0' }}>
-                      Tidak ada query parameter. Klik &quot;Tambah Parameter&quot; untuk menambahkan tracking UTM atau token.
-                    </div>
-                  ) : (
-                    <div style={{ display: 'flex', flexDirection: 'column', gap: '0.4rem' }}>
-                      {queryParams.map((param) => (
-                        <div key={param.id} style={{ display: 'flex', gap: '0.4rem', alignItems: 'center' }}>
-                          <input
-                            type="text"
-                            className="input-text"
-                            placeholder="Key (misal: utm_source)"
-                            style={{ paddingLeft: '0.75rem', fontSize: '0.8125rem' }}
-                            value={param.key}
-                            onChange={(e) => updateQueryParam(param.id, 'key', e.target.value)}
-                          />
-                          <span style={{ color: 'var(--text-dim)' }}>=</span>
-                          <input
-                            type="text"
-                            className="input-text"
-                            placeholder="Nilai (misal: qr-banner)"
-                            style={{ paddingLeft: '0.75rem', fontSize: '0.8125rem' }}
-                            value={param.value}
-                            onChange={(e) => updateQueryParam(param.id, 'value', e.target.value)}
-                          />
-                          <button
-                            type="button"
-                            className="btn btn-danger-ghost btn-icon btn-sm"
-                            onClick={() => removeQueryParam(param.id)}
-                            title="Hapus parameter"
-                          >
-                            <Trash2 size={14} />
-                          </button>
-                        </div>
-                      ))}
-                    </div>
-                  )}
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '0.45rem' }}>
+                    {queryParams.map((param) => (
+                      <div key={param.id} style={{ display: 'flex', gap: '0.4rem', alignItems: 'center' }}>
+                        <input
+                          type="text"
+                          placeholder="Key"
+                          value={param.key}
+                          onChange={(e) => updateQueryParam(param.id, 'key', e.target.value)}
+                          style={{
+                            flex: 1,
+                            height: '36px',
+                            padding: '0 0.75rem',
+                            border: '1px solid #cbd5e1',
+                            borderRadius: '8px',
+                            background: '#ffffff',
+                            color: '#0f172a',
+                            fontSize: '0.8125rem',
+                            outline: 'none',
+                            boxSizing: 'border-box',
+                          }}
+                        />
+                        <span style={{ color: '#94a3b8', fontWeight: 600 }}>=</span>
+                        <input
+                          type="text"
+                          placeholder="Value"
+                          value={param.value}
+                          onChange={(e) => updateQueryParam(param.id, 'value', e.target.value)}
+                          style={{
+                            flex: 1,
+                            height: '36px',
+                            padding: '0 0.75rem',
+                            border: '1px solid #cbd5e1',
+                            borderRadius: '8px',
+                            background: '#ffffff',
+                            color: '#0f172a',
+                            fontSize: '0.8125rem',
+                            outline: 'none',
+                            boxSizing: 'border-box',
+                          }}
+                        />
+                        <button
+                          type="button"
+                          onClick={() => removeQueryParam(param.id)}
+                          style={{
+                            background: 'none',
+                            border: 'none',
+                            color: '#ef4444',
+                            cursor: 'pointer',
+                            padding: '0.35rem',
+                          }}
+                        >
+                          <Trash2 size={16} />
+                        </button>
+                      </div>
+                    ))}
+                  </div>
                 </div>
 
-                {/* Hash / Anchor */}
+                {/* 4. Hash / Anchor */}
                 <div>
-                  <label style={{ display: 'block', fontSize: '0.75rem', fontWeight: 600, color: 'var(--text-muted)', marginBottom: '0.35rem', textTransform: 'uppercase' }}>
-                    4. Hash / Bagian Anchor (Opsional)
+                  <label
+                    style={{
+                      display: 'block',
+                      fontSize: '0.75rem',
+                      fontWeight: 700,
+                      color: '#475569',
+                      marginBottom: '0.4rem',
+                      textTransform: 'uppercase',
+                      letterSpacing: '0.03em',
+                    }}
+                  >
+                    4. HASH / BAGIAN ANCHOR (OPSIONAL)
                   </label>
                   <input
                     type="text"
-                    className="input-text"
                     placeholder="#section-kontak, #daftar"
-                    style={{ paddingLeft: '1rem' }}
                     value={hash}
                     onChange={(e) => setHash(e.target.value)}
+                    style={{
+                      width: '100%',
+                      height: '40px',
+                      padding: '0 0.85rem',
+                      border: '1px solid #cbd5e1',
+                      borderRadius: '8px',
+                      background: '#ffffff',
+                      color: '#0f172a',
+                      fontSize: '0.84375rem',
+                      outline: 'none',
+                      boxSizing: 'border-box',
+                    }}
                   />
                 </div>
               </div>
             ) : (
-              /* Style & Customization Tab */
+              /* Tab Style */
               <div style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
                 <div>
-                  <label style={{ display: 'block', fontSize: '0.75rem', fontWeight: 600, color: 'var(--text-muted)', marginBottom: '0.5rem', textTransform: 'uppercase' }}>
-                    Preset Tema Warna QR
+                  <label style={{ display: 'block', fontSize: '0.75rem', fontWeight: 700, color: '#475569', marginBottom: '0.5rem', textTransform: 'uppercase' }}>
+                    Tema Warna Cepat
                   </label>
-                  <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
-                    {COLOR_PRESETS.map((preset) => (
+                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '0.5rem' }}>
+                    {COLOR_PRESETS.map((p) => (
                       <button
-                        key={preset.label}
+                        key={p.label}
                         type="button"
-                        className={`btn btn-sm ${darkColor === preset.dark ? 'btn-primary' : 'btn-secondary'}`}
-                        style={{ fontSize: '0.75rem', display: 'flex', alignItems: 'center', gap: '0.4rem' }}
                         onClick={() => {
-                          setDarkColor(preset.dark);
-                          setLightColor(preset.light);
+                          setDarkColor(p.dark);
+                          setLightColor(p.light);
+                        }}
+                        style={{
+                          padding: '0.5rem',
+                          borderRadius: '8px',
+                          border: darkColor === p.dark ? '2px solid #2563eb' : '1px solid #cbd5e1',
+                          background: '#ffffff',
+                          cursor: 'pointer',
+                          display: 'flex',
+                          alignItems: 'center',
+                          gap: '0.4rem',
+                          fontSize: '0.75rem',
+                          fontWeight: 600,
+                          color: '#0f172a',
                         }}
                       >
-                        <span
-                          style={{
-                            width: '12px',
-                            height: '12px',
-                            borderRadius: '50%',
-                            backgroundColor: preset.dark,
-                            border: '1px solid #ffffff',
-                          }}
-                        />
-                        <span>{preset.label}</span>
+                        <div style={{ width: '14px', height: '14px', borderRadius: '50%', background: p.dark }} />
+                        <span>{p.label}</span>
                       </button>
                     ))}
                   </div>
@@ -514,112 +650,62 @@ export const StandaloneQRGeneratorModal: React.FC<StandaloneQRGeneratorModalProp
 
                 <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
                   <div>
-                    <label style={{ display: 'block', fontSize: '0.75rem', fontWeight: 600, color: 'var(--text-muted)', marginBottom: '0.35rem' }}>
-                      Warna QR Code (Gelap)
+                    <label style={{ display: 'block', fontSize: '0.75rem', fontWeight: 700, color: '#475569', marginBottom: '0.4rem', textTransform: 'uppercase' }}>
+                      Warna Kode QR
                     </label>
-                    <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
-                      <input
-                        type="color"
-                        value={darkColor}
-                        onChange={(e) => setDarkColor(e.target.value)}
-                        style={{ width: '40px', height: '36px', border: 'none', background: 'transparent', cursor: 'pointer' }}
-                      />
-                      <input
-                        type="text"
-                        className="input-text"
-                        value={darkColor}
-                        onChange={(e) => setDarkColor(e.target.value)}
-                        style={{ paddingLeft: '0.75rem', fontSize: '0.8125rem' }}
-                      />
-                    </div>
+                    <input
+                      type="color"
+                      value={darkColor}
+                      onChange={(e) => setDarkColor(e.target.value)}
+                      style={{ width: '100%', height: '40px', borderRadius: '8px', border: '1px solid #cbd5e1', cursor: 'pointer' }}
+                    />
                   </div>
-
                   <div>
-                    <label style={{ display: 'block', fontSize: '0.75rem', fontWeight: 600, color: 'var(--text-muted)', marginBottom: '0.35rem' }}>
-                      Warna Background (Terang)
+                    <label style={{ display: 'block', fontSize: '0.75rem', fontWeight: 700, color: '#475569', marginBottom: '0.4rem', textTransform: 'uppercase' }}>
+                      Warna Background Card
                     </label>
-                    <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
-                      <input
-                        type="color"
-                        value={lightColor}
-                        onChange={(e) => setLightColor(e.target.value)}
-                        style={{ width: '40px', height: '36px', border: 'none', background: 'transparent', cursor: 'pointer' }}
-                      />
-                      <input
-                        type="text"
-                        className="input-text"
-                        value={lightColor}
-                        onChange={(e) => setLightColor(e.target.value)}
-                        style={{ paddingLeft: '0.75rem', fontSize: '0.8125rem' }}
-                      />
-                    </div>
-                  </div>
-                </div>
-
-                <div>
-                  <label style={{ display: 'block', fontSize: '0.75rem', fontWeight: 600, color: 'var(--text-muted)', marginBottom: '0.35rem', textTransform: 'uppercase' }}>
-                    Error Correction Level
-                  </label>
-                  <div style={{ display: 'flex', gap: '0.5rem' }}>
-                    {(['L', 'M', 'Q', 'H'] as const).map((lvl) => (
-                      <button
-                        key={lvl}
-                        type="button"
-                        className={`btn btn-sm ${errorCorrection === lvl ? 'btn-primary' : 'btn-secondary'}`}
-                        style={{ flex: 1, fontSize: '0.75rem' }}
-                        onClick={() => setErrorCorrection(lvl)}
-                      >
-                        {lvl} ({lvl === 'L' ? '7%' : lvl === 'M' ? '15%' : lvl === 'Q' ? '25%' : '30%'})
-                      </button>
-                    ))}
-                  </div>
-                  <span style={{ fontSize: '0.75rem', color: 'var(--text-dim)', marginTop: '0.25rem', display: 'block' }}>
-                    Tingkat &quot;H&quot; (30%) paling tahan gores / rusak dan sangat stabil dibaca kamera.
-                  </span>
-                </div>
-
-                <div>
-                  <label style={{ display: 'block', fontSize: '0.75rem', fontWeight: 600, color: 'var(--text-muted)', marginBottom: '0.35rem', textTransform: 'uppercase' }}>
-                    Margin / Border Padding
-                  </label>
-                  <div style={{ display: 'flex', gap: '0.5rem' }}>
-                    {[1, 2, 4].map((m) => (
-                      <button
-                        key={m}
-                        type="button"
-                        className={`btn btn-sm ${margin === m ? 'btn-primary' : 'btn-secondary'}`}
-                        style={{ flex: 1, fontSize: '0.75rem' }}
-                        onClick={() => setMargin(m)}
-                      >
-                        {m} Modul {m === 2 ? '(Standar)' : ''}
-                      </button>
-                    ))}
+                    <input
+                      type="color"
+                      value={lightColor}
+                      onChange={(e) => setLightColor(e.target.value)}
+                      style={{ width: '100%', height: '40px', borderRadius: '8px', border: '1px solid #cbd5e1', cursor: 'pointer' }}
+                    />
                   </div>
                 </div>
               </div>
             )}
 
-            {/* Live URL Preview Box */}
+            {/* Live Link Target Box (Clean modern light box) */}
             <div
               style={{
-                background: 'rgba(0, 0, 0, 0.3)',
-                padding: '0.875rem',
-                borderRadius: 'var(--radius-md)',
-                border: '1px solid var(--border-subtle)',
+                background: '#f8fafc',
+                border: '1px solid #e2e8f0',
+                borderRadius: '10px',
+                padding: '0.85rem 1rem',
               }}
             >
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.35rem' }}>
-                <span style={{ fontSize: '0.75rem', color: 'var(--cyan-400)', fontWeight: 600, textTransform: 'uppercase' }}>
-                  Live Link Target:
+                <span style={{ fontSize: '0.75rem', color: '#64748b', fontWeight: 700, textTransform: 'uppercase' }}>
+                  LIVE LINK TARGET:
                 </span>
                 <button
                   type="button"
-                  className="btn btn-ghost btn-sm"
-                  style={{ padding: '0.1rem 0.4rem', fontSize: '0.7rem' }}
                   onClick={handleCopyUrl}
                   disabled={!constructedUrl}
+                  style={{
+                    background: '#ffffff',
+                    border: '1px solid #cbd5e1',
+                    borderRadius: '6px',
+                    padding: '0.2rem 0.5rem',
+                    fontSize: '0.75rem',
+                    color: '#334155',
+                    cursor: 'pointer',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '0.3rem',
+                  }}
                 >
-                  {copiedUrl ? <Check size={12} style={{ color: 'var(--status-valid-text)' }} /> : <Copy size={12} />}
+                  {copiedUrl ? <Check size={12} style={{ color: '#16a34a' }} /> : <Copy size={12} />}
                   <span>{copiedUrl ? 'Tersalin' : 'Salin URL'}</span>
                 </button>
               </div>
@@ -627,7 +713,7 @@ export const StandaloneQRGeneratorModal: React.FC<StandaloneQRGeneratorModalProp
                 style={{
                   fontFamily: 'monospace',
                   fontSize: '0.8125rem',
-                  color: constructedUrl ? '#ffffff' : 'var(--text-dim)',
+                  color: constructedUrl ? '#0f172a' : '#94a3b8',
                   wordBreak: 'break-all',
                 }}
               >
@@ -636,17 +722,17 @@ export const StandaloneQRGeneratorModal: React.FC<StandaloneQRGeneratorModalProp
             </div>
           </div>
 
-          {/* Right Column: QR Code Preview & Action Suite */}
+          {/* Right Column: QR Code Preview (Slate Card matching Gambar 2) */}
           <div
             style={{
+              background: '#64748b',
+              borderRadius: '16px',
+              padding: '1.5rem',
               display: 'flex',
               flexDirection: 'column',
               alignItems: 'center',
-              gap: '1rem',
-              background: 'rgba(10, 15, 29, 0.4)',
-              padding: '1.25rem',
-              borderRadius: 'var(--radius-lg)',
-              border: '1px solid var(--border-subtle)',
+              gap: '1.25rem',
+              boxShadow: '0 4px 12px rgba(0, 0, 0, 0.1)',
             }}
           >
             {/* The QR Code Card */}
@@ -654,12 +740,13 @@ export const StandaloneQRGeneratorModal: React.FC<StandaloneQRGeneratorModalProp
               style={{
                 background: lightColor,
                 padding: `${cardPadding}px`,
-                borderRadius: 'var(--radius-lg)',
-                boxShadow: '0 12px 30px rgba(0, 0, 0, 0.6), 0 0 25px rgba(56, 189, 248, 0.2)',
+                borderRadius: '14px',
+                boxShadow: '0 8px 24px rgba(0, 0, 0, 0.18)',
                 display: 'flex',
-                flexDirection: 'column',
                 alignItems: 'center',
-                transition: 'all 0.2s ease',
+                justifyContent: 'center',
+                minWidth: '220px',
+                minHeight: '220px',
               }}
             >
               {qrPngUrl ? (
@@ -667,19 +754,15 @@ export const StandaloneQRGeneratorModal: React.FC<StandaloneQRGeneratorModalProp
                 <img
                   src={qrPngUrl}
                   alt={`QR Code untuk ${rawDomain || 'domain'}`}
-                  width={220}
-                  height={220}
-                  style={{
-                    display: 'block',
-                    borderRadius: '4px',
-                    userSelect: 'none',
-                  }}
+                  width={210}
+                  height={210}
+                  style={{ display: 'block', borderRadius: '4px', userSelect: 'none' }}
                 />
               ) : (
                 <div
                   style={{
-                    width: '220px',
-                    height: '220px',
+                    width: '210px',
+                    height: '210px',
                     display: 'flex',
                     flexDirection: 'column',
                     alignItems: 'center',
@@ -690,17 +773,17 @@ export const StandaloneQRGeneratorModal: React.FC<StandaloneQRGeneratorModalProp
                     padding: '1rem',
                   }}
                 >
-                  <QrCode size={36} style={{ marginBottom: '0.5rem', opacity: 0.4 }} />
+                  <QrCode size={40} style={{ marginBottom: '0.5rem', opacity: 0.35 }} />
                   <span>Ketik domain untuk melihat preview QR</span>
                 </div>
               )}
             </div>
 
             {/* Padding Card Control */}
-            <div style={{ width: '100%', display: 'flex', flexDirection: 'column', gap: '0.4rem', background: 'rgba(255, 255, 255, 0.03)', padding: '0.75rem', borderRadius: 'var(--radius-md)', border: '1px solid var(--border-subtle)' }}>
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: '0.75rem', color: 'var(--text-muted)' }}>
-                <span>Padding Card Bingkai:</span>
-                <strong style={{ color: 'var(--cyan-400)' }}>{cardPadding}px</strong>
+            <div style={{ width: '100%', color: '#ffffff' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.75rem', marginBottom: '0.4rem', fontWeight: 600 }}>
+                <span style={{ color: '#cbd5e1' }}>Padding Card Bingkai:</span>
+                <span>{cardPadding}px</span>
               </div>
               <input
                 type="range"
@@ -709,38 +792,59 @@ export const StandaloneQRGeneratorModal: React.FC<StandaloneQRGeneratorModalProp
                 step={4}
                 value={cardPadding}
                 onChange={(e) => setCardPadding(Number(e.target.value))}
-                style={{ width: '100%', accentColor: 'var(--cyan-400)', cursor: 'pointer' }}
+                style={{ width: '100%', accentColor: '#2563eb', cursor: 'pointer', marginBottom: '0.5rem' }}
               />
-              <div style={{ display: 'flex', gap: '0.35rem', justifyContent: 'space-between' }}>
+              <div style={{ display: 'flex', gap: '0.35rem' }}>
                 {[0, 8, 16, 24, 36].map((p) => (
                   <button
                     key={p}
                     type="button"
-                    className={`btn btn-sm ${cardPadding === p ? 'btn-primary' : 'btn-secondary'}`}
-                    style={{ padding: '0.15rem 0.4rem', fontSize: '0.6875rem', flex: 1 }}
                     onClick={() => setCardPadding(p)}
+                    style={{
+                      flex: 1,
+                      padding: '0.25rem 0',
+                      borderRadius: '999px',
+                      fontSize: '0.6875rem',
+                      fontWeight: 600,
+                      cursor: 'pointer',
+                      border: 'none',
+                      background: cardPadding === p ? '#2563eb' : '#ffffff',
+                      color: cardPadding === p ? '#ffffff' : '#334155',
+                      boxShadow: '0 1px 2px rgba(0,0,0,0.1)',
+                    }}
                   >
-                    {p === 0 ? '0px' : `${p}px`}
+                    {p}px
                   </button>
                 ))}
               </div>
             </div>
 
             {/* Resolution Selector */}
-            <div style={{ width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'space-between', fontSize: '0.75rem', color: 'var(--text-muted)' }}>
-              <span>Resolusi Ekspor:</span>
-              <div style={{ display: 'flex', gap: '0.3rem' }}>
-                {[300, 600, 1000].map((sz) => (
-                  <button
-                    key={sz}
-                    type="button"
-                    className={`btn btn-sm ${qrSize === sz ? 'btn-primary' : 'btn-secondary'}`}
-                    style={{ padding: '0.15rem 0.4rem', fontSize: '0.7rem' }}
-                    onClick={() => setQrSize(sz)}
-                  >
-                    {sz}px {sz === 1000 ? '(HD)' : ''}
-                  </button>
-                ))}
+            <div style={{ width: '100%' }}>
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', fontSize: '0.75rem', color: '#cbd5e1', fontWeight: 600, marginBottom: '0.4rem' }}>
+                <span>Resolusi Ekspor:</span>
+                <div style={{ display: 'flex', gap: '0.35rem' }}>
+                  {[300, 600, 1000].map((sz) => (
+                    <button
+                      key={sz}
+                      type="button"
+                      onClick={() => setQrSize(sz)}
+                      style={{
+                        padding: '0.25rem 0.65rem',
+                        borderRadius: '999px',
+                        fontSize: '0.7rem',
+                        fontWeight: 600,
+                        cursor: 'pointer',
+                        border: 'none',
+                        background: qrSize === sz ? '#2563eb' : '#ffffff',
+                        color: qrSize === sz ? '#ffffff' : '#334155',
+                        boxShadow: '0 1px 2px rgba(0,0,0,0.1)',
+                      }}
+                    >
+                      {sz}px {sz === 1000 ? '(HD)' : ''}
+                    </button>
+                  ))}
+                </div>
               </div>
             </div>
 
@@ -748,9 +852,23 @@ export const StandaloneQRGeneratorModal: React.FC<StandaloneQRGeneratorModalProp
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.5rem', width: '100%' }}>
               <button
                 type="button"
-                className="btn btn-primary btn-sm"
                 onClick={handleDownloadPNG}
                 disabled={!qrPngUrl}
+                style={{
+                  height: '38px',
+                  borderRadius: '8px',
+                  background: '#2563eb',
+                  color: '#ffffff',
+                  border: 'none',
+                  fontSize: '0.8125rem',
+                  fontWeight: 600,
+                  cursor: qrPngUrl ? 'pointer' : 'not-allowed',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  gap: '0.4rem',
+                  boxShadow: '0 2px 4px rgba(37, 99, 235, 0.3)',
+                }}
               >
                 <Download size={14} />
                 <span>Unduh PNG</span>
@@ -758,10 +876,23 @@ export const StandaloneQRGeneratorModal: React.FC<StandaloneQRGeneratorModalProp
 
               <button
                 type="button"
-                className="btn btn-secondary btn-sm"
                 onClick={handleDownloadSVG}
                 disabled={!constructedUrl}
-                title="Unduh format vektor SVG (skalabilitas tinggi)"
+                style={{
+                  height: '38px',
+                  borderRadius: '8px',
+                  background: '#ffffff',
+                  color: '#334155',
+                  border: 'none',
+                  fontSize: '0.8125rem',
+                  fontWeight: 600,
+                  cursor: constructedUrl ? 'pointer' : 'not-allowed',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  gap: '0.4rem',
+                  boxShadow: '0 1px 2px rgba(0, 0, 0, 0.1)',
+                }}
               >
                 <Download size={14} />
                 <span>Unduh SVG</span>
@@ -769,11 +900,25 @@ export const StandaloneQRGeneratorModal: React.FC<StandaloneQRGeneratorModalProp
 
               <button
                 type="button"
-                className="btn btn-secondary btn-sm"
                 onClick={handleCopyImage}
                 disabled={!qrPngUrl}
+                style={{
+                  height: '38px',
+                  borderRadius: '8px',
+                  background: '#ffffff',
+                  color: '#334155',
+                  border: 'none',
+                  fontSize: '0.8125rem',
+                  fontWeight: 600,
+                  cursor: qrPngUrl ? 'pointer' : 'not-allowed',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  gap: '0.4rem',
+                  boxShadow: '0 1px 2px rgba(0, 0, 0, 0.1)',
+                }}
               >
-                {copiedImage ? <Check size={14} style={{ color: 'var(--status-valid-text)' }} /> : <Sparkles size={14} />}
+                {copiedImage ? <Check size={14} style={{ color: '#16a34a' }} /> : <Sparkles size={14} />}
                 <span>{copiedImage ? 'Tersalin' : 'Salin Gambar'}</span>
               </button>
 
@@ -782,49 +927,76 @@ export const StandaloneQRGeneratorModal: React.FC<StandaloneQRGeneratorModalProp
                   href={constructedUrl}
                   target="_blank"
                   rel="noreferrer"
-                  className="btn btn-secondary btn-sm"
-                  style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.4rem' }}
+                  style={{
+                    height: '38px',
+                    borderRadius: '8px',
+                    background: '#ffffff',
+                    color: '#334155',
+                    fontSize: '0.8125rem',
+                    fontWeight: 600,
+                    textDecoration: 'none',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    gap: '0.4rem',
+                    boxShadow: '0 1px 2px rgba(0, 0, 0, 0.1)',
+                  }}
                 >
                   <ExternalLink size={14} />
                   <span>Kunjungi</span>
                 </a>
               ) : (
-                <button type="button" className="btn btn-secondary btn-sm" disabled>
+                <button
+                  type="button"
+                  disabled
+                  style={{
+                    height: '38px',
+                    borderRadius: '8px',
+                    background: '#ffffff',
+                    color: '#94a3b8',
+                    border: 'none',
+                    fontSize: '0.8125rem',
+                    fontWeight: 600,
+                    cursor: 'not-allowed',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    gap: '0.4rem',
+                  }}
+                >
                   <ExternalLink size={14} />
                   <span>Kunjungi</span>
                 </button>
               )}
             </div>
-
-            {/* Watchlist Integration */}
-            {onAddToWatchlist && rawDomain.trim() && (
-              <button
-                type="button"
-                className="btn btn-secondary btn-sm"
-                style={{ width: '100%', borderColor: 'rgba(56, 189, 248, 0.3)' }}
-                onClick={handleAddToWatchlist}
-                disabled={isAddingWatchlist || addedSuccess}
-              >
-                {addedSuccess ? (
-                  <>
-                    <Check size={14} style={{ color: 'var(--status-valid-text)' }} />
-                    <span>Domain Sudah Dalam Pemantauan</span>
-                  </>
-                ) : isAddingWatchlist ? (
-                  <span>Menyimpan ke Pemantauan...</span>
-                ) : (
-                  <>
-                    <BookmarkPlus size={14} style={{ color: 'var(--cyan-400)' }} />
-                    <span>+ Simpan Domain ke Monitor SSL</span>
-                  </>
-                )}
-              </button>
-            )}
           </div>
         </div>
 
-        <div className="modal-footer">
-          <button type="button" className="btn btn-secondary btn-sm" onClick={onClose}>
+        {/* Modal Footer */}
+        <div
+          style={{
+            padding: '1rem 1.75rem',
+            borderTop: '1px solid #e2e8f0',
+            background: '#ffffff',
+            display: 'flex',
+            justifyContent: 'flex-end',
+          }}
+        >
+          <button
+            type="button"
+            onClick={onClose}
+            style={{
+              padding: '0.55rem 1.25rem',
+              borderRadius: '8px',
+              background: '#ffffff',
+              border: '1px solid #cbd5e1',
+              color: '#0f172a',
+              fontSize: '0.84375rem',
+              fontWeight: 600,
+              cursor: 'pointer',
+              boxShadow: '0 1px 2px rgba(0,0,0,0.05)',
+            }}
+          >
             Selesai
           </button>
         </div>
