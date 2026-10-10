@@ -151,26 +151,82 @@ function getNetworkThroughput() {
   }
 }
 
-// 5. PM2 Processes
+// 5. PM2 Processes (Auto-detect binary & user homes)
 async function getPm2Processes() {
-  const output = await runCmd('pm2 jlist');
-  if (!output) return [];
+  const candidateBins = ['pm2', '/usr/local/bin/pm2', '/usr/bin/pm2'];
 
+  // Check NVM paths
   try {
-    const list = JSON.parse(output);
-    return list.map((item) => ({
-      name: item.name,
-      pmId: item.pm_id,
-      status: item.pm2_env?.status === 'online' ? 'ONLINE' : item.pm2_env?.status === 'stopped' ? 'STOPPED' : 'ERRORED',
-      cpu: parseFloat((item.monit?.cpu || 0).toFixed(1)),
-      memory: parseFloat(((item.monit?.memory || 0) / (1024 * 1024)).toFixed(1)), // MB
-      restarts: item.pm2_env?.restart_time || 0,
-      uptime: item.pm2_env?.pm_uptime ? Math.floor((Date.now() - item.pm2_env.pm_uptime) / 1000) : 0,
-      nodeVersion: item.pm2_env?.node_version || process.version,
-    }));
-  } catch {
-    return [];
+    if (fs.existsSync('/root/.nvm/versions/node')) {
+      const versions = fs.readdirSync('/root/.nvm/versions/node');
+      for (const v of versions) {
+        candidateBins.push(`/root/.nvm/versions/node/${v}/bin/pm2`);
+      }
+    }
+    if (fs.existsSync('/home')) {
+      const users = fs.readdirSync('/home');
+      for (const u of users) {
+        const nvmPath = `/home/${u}/.nvm/versions/node`;
+        if (fs.existsSync(nvmPath)) {
+          const versions = fs.readdirSync(nvmPath);
+          for (const v of versions) {
+            candidateBins.push(`/home/${u}/.nvm/versions/node/${v}/bin/pm2`);
+          }
+        }
+      }
+    }
+  } catch (_) {}
+
+  // Candidate PM2_HOME directories
+  const candidateHomes = [null]; // null = default environment
+  if (fs.existsSync('/root/.pm2')) candidateHomes.push('/root/.pm2');
+  try {
+    if (fs.existsSync('/home')) {
+      const users = fs.readdirSync('/home');
+      for (const u of users) {
+        const p = `/home/${u}/.pm2`;
+        if (fs.existsSync(p)) candidateHomes.push(p);
+      }
+    }
+  } catch (_) {}
+
+  const allProcesses = [];
+  const seenKeys = new Set();
+
+  for (const bin of candidateBins) {
+    for (const pm2Home of candidateHomes) {
+      try {
+        const cmd = pm2Home ? `PM2_HOME="${pm2Home}" ${bin} jlist` : `${bin} jlist`;
+        const output = await runCmd(cmd);
+        if (!output || !output.trim().startsWith('[')) continue;
+
+        const list = JSON.parse(output);
+        if (!Array.isArray(list) || list.length === 0) continue;
+
+        for (const item of list) {
+          const key = `${item.name}-${item.pm_id}`;
+          if (seenKeys.has(key)) continue;
+          seenKeys.add(key);
+
+          allProcesses.push({
+            name: item.name,
+            pmId: item.pm_id,
+            status: item.pm2_env?.status === 'online' ? 'ONLINE' : item.pm2_env?.status === 'stopped' ? 'STOPPED' : 'ERRORED',
+            cpu: parseFloat((item.monit?.cpu || 0).toFixed(1)),
+            memory: parseFloat(((item.monit?.memory || 0) / (1024 * 1024)).toFixed(1)), // MB
+            restarts: item.pm2_env?.restart_time || 0,
+            uptime: item.pm2_env?.pm_uptime ? Math.floor((Date.now() - item.pm2_env.pm_uptime) / 1000) : 0,
+            nodeVersion: item.pm2_env?.node_version || process.version,
+          });
+        }
+      } catch (_) {
+        // continue search
+      }
+    }
+    if (allProcesses.length > 0) break;
   }
+
+  return allProcesses;
 }
 
 // 6. Nginx Status

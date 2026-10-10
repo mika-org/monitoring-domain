@@ -1,7 +1,14 @@
-import { NextRequest, NextResponse } from 'next/server';
+import { NextRequest } from 'next/server';
 import { prisma } from '@/lib/prisma';
+import { PrismaClient } from '@prisma/client';
 import { verifyAgentToken } from '@/lib/agent-auth';
 import { triggerAlert } from '@/lib/alerts';
+import { safeJson } from '@/lib/json-response';
+
+function getDb() {
+  if (prisma && prisma.pm2Process && prisma.serverMetric) return prisma;
+  return new PrismaClient();
+}
 
 export async function POST(req: NextRequest) {
   try {
@@ -9,16 +16,17 @@ export async function POST(req: NextRequest) {
     const auth = await verifyAgentToken(authHeader);
 
     if (!auth) {
-      return NextResponse.json({ success: false, error: 'Unauthorized: Invalid Agent Token' }, { status: 401 });
+      return safeJson({ success: false, error: 'Unauthorized: Invalid Agent Token' }, { status: 401 });
     }
 
     const payload = await req.json().catch(() => null);
     if (!payload || !payload.metrics) {
-      return NextResponse.json({ success: false, error: 'Invalid payload: missing metrics' }, { status: 400 });
+      return safeJson({ success: false, error: 'Invalid payload: missing metrics' }, { status: 400 });
     }
 
     const serverId = auth.server.id;
     const now = new Date();
+    const db = getDb();
     const { system, metrics, pm2, nginx } = payload;
 
     // 1. Update Server status & system info if provided
@@ -39,13 +47,13 @@ export async function POST(req: NextRequest) {
       if (system.uptime !== undefined) serverUpdateData.uptime = BigInt(Math.floor(Number(system.uptime)));
     }
 
-    await prisma.server.update({
+    await db.server.update({
       where: { id: serverId },
       data: serverUpdateData,
     });
 
     // 2. Insert into server_metrics
-    await prisma.serverMetric.create({
+    await db.serverMetric.create({
       data: {
         serverId,
         cpuUsage: Number(metrics.cpuUsage || 0),
@@ -76,7 +84,7 @@ export async function POST(req: NextRequest) {
           procStatus = 'ERRORED';
         }
 
-        await prisma.pm2Process.upsert({
+        await db.pm2Process.upsert({
           where: {
             serverId_name_pmId: {
               serverId,
@@ -124,12 +132,12 @@ export async function POST(req: NextRequest) {
       const nginxStatus = String(nginx.status || '').toUpperCase();
       const validStatus = nginxStatus === 'ACTIVE' ? 'ACTIVE' : nginxStatus === 'FAILED' ? 'FAILED' : 'INACTIVE';
 
-      const existingNginx = await prisma.nginxService.findFirst({
+      const existingNginx = await db.nginxService.findFirst({
         where: { serverId },
       });
 
       if (existingNginx) {
-        await prisma.nginxService.update({
+        await db.nginxService.update({
           where: { id: existingNginx.id },
           data: {
             status: validStatus,
@@ -140,7 +148,7 @@ export async function POST(req: NextRequest) {
           },
         });
       } else {
-        await prisma.nginxService.create({
+        await db.nginxService.create({
           data: {
             serverId,
             status: validStatus,
@@ -197,13 +205,13 @@ export async function POST(req: NextRequest) {
       });
     }
 
-    return NextResponse.json({
+    return safeJson({
       success: true,
       message: 'Metrics stored successfully',
       timestamp: now.toISOString(),
     });
   } catch (error: any) {
     console.error('Agent metrics ingestion error:', error);
-    return NextResponse.json({ success: false, error: error.message || 'Internal server error' }, { status: 500 });
+    return safeJson({ success: false, error: error.message || 'Internal server error' }, { status: 500 });
   }
 }
