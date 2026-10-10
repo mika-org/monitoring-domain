@@ -1,18 +1,22 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { batchAddMonitoredDomains, updateDomainCheckResult, getMonitoredDomains } from '@/lib/storage';
 import { checkSSL } from '@/lib/ssl-checker';
+import { batchDomainSchema } from '@/lib/validations';
 
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
-    const { domains } = body;
+    const parseResult = batchDomainSchema.safeParse(body);
 
-    if (!Array.isArray(domains) || domains.length === 0) {
+    if (!parseResult.success) {
+      const firstError = parseResult.error.issues[0]?.message || 'Input tidak valid';
       return NextResponse.json(
-        { success: false, error: 'Daftar domain harus berupa array non-kosong' },
+        { success: false, error: firstError },
         { status: 400 }
       );
     }
+
+    const { domains } = parseResult.data;
 
     const { added, skipped } = await batchAddMonitoredDomains(domains);
 

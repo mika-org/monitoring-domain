@@ -6,6 +6,7 @@ import {
   updateDomainCheckResult,
 } from '@/lib/storage';
 import { checkSSL } from '@/lib/ssl-checker';
+import { addDomainSchema } from '@/lib/validations';
 
 export async function GET(request: NextRequest) {
   try {
@@ -51,14 +52,17 @@ export async function GET(request: NextRequest) {
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
-    const { domain, port, alias } = body;
+    const parseResult = addDomainSchema.safeParse(body);
 
-    if (!domain || typeof domain !== 'string') {
+    if (!parseResult.success) {
+      const firstError = parseResult.error.issues[0]?.message || 'Input tidak valid';
       return NextResponse.json(
-        { success: false, error: 'Domain wajib diisi' },
+        { success: false, error: firstError },
         { status: 400 }
       );
     }
+
+    const { domain, port, alias } = parseResult.data;
 
     const { domain: newDomain, isDuplicate } = await addMonitoredDomain(domain, port, alias);
 
