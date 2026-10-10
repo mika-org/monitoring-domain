@@ -22,12 +22,13 @@ export async function middleware(request: NextRequest) {
   const token = request.cookies.get(AUTH_COOKIE_NAME)?.value;
   const authenticated = await isTokenValid(token);
 
-  // Allow static files, favicon, etc.
+  // Allow static files, favicon, agent download scripts, etc.
   if (
     pathname.startsWith('/_next') ||
     pathname.startsWith('/favicon.ico') ||
     pathname.startsWith('/uploads') ||
-    pathname.startsWith('/api/auth')
+    pathname.startsWith('/api/auth') ||
+    pathname.startsWith('/agent/')
   ) {
     return NextResponse.next();
   }
@@ -73,7 +74,8 @@ export const config = {
      * - _next/static (static files)
      * - _next/image (image optimization files)
      * - favicon.ico (favicon file)
+     * - agent (agent installer and scripts)
      */
-    '/((?!_next/static|_next/image|favicon.ico).*)',
+    '/((?!_next/static|_next/image|favicon.ico|agent).*)',
   ],
 };

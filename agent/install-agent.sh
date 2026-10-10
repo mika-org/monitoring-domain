@@ -3,17 +3,41 @@
 # VioreCert Server Monitoring Agent Auto-Installer for Ubuntu
 set -e
 
-DASHBOARD_URL="$1"
-AGENT_TOKEN="$2"
+DASHBOARD_URL=""
+AGENT_TOKEN=""
+
+while [[ $# -gt 0 ]]; do
+  case "$1" in
+    --hub|-h)
+      DASHBOARD_URL="$2"
+      shift 2
+      ;;
+    --token|-t)
+      AGENT_TOKEN="$2"
+      shift 2
+      ;;
+    *)
+      if [ -z "$DASHBOARD_URL" ]; then
+        DASHBOARD_URL="$1"
+      elif [ -z "$AGENT_TOKEN" ]; then
+        AGENT_TOKEN="$1"
+      fi
+      shift
+      ;;
+  esac
+done
 
 if [ -z "$DASHBOARD_URL" ] || [ -z "$AGENT_TOKEN" ]; then
-  echo "Usage: sudo bash install-agent.sh <DASHBOARD_URL> <AGENT_TOKEN>"
+  echo "Usage:"
+  echo "  sudo bash install-agent.sh <DASHBOARD_URL> <AGENT_TOKEN>"
+  echo "  sudo bash install-agent.sh --hub <DASHBOARD_URL> --token <AGENT_TOKEN>"
   exit 1
 fi
 
 echo "=========================================================="
 echo "  Installing VioreCert Server Monitoring Agent..."
-echo "  Target: $DASHBOARD_URL"
+echo "  Target Hub: $DASHBOARD_URL"
+echo "  HTTP Port:  3010"
 echo "=========================================================="
 
 # 1. Ensure Node.js is installed
@@ -31,12 +55,12 @@ sudo mkdir -p "$INSTALL_DIR"
 cd "$INSTALL_DIR"
 
 echo "[2/4] Downloading agent script..."
-cat << 'EOF' > "$INSTALL_DIR/server-agent.js"
-$(cat /opt/viorecert-agent/server-agent.js 2>/dev/null || true)
-EOF
-
-# Fetch latest script from dashboard if accessible
+# Fetch latest script from dashboard hub
 curl -fsSL "$DASHBOARD_URL/agent/server-agent.js" -o "$INSTALL_DIR/server-agent.js" || true
+
+if [ ! -s "$INSTALL_DIR/server-agent.js" ]; then
+  echo "Warning: Could not fetch server-agent.js from $DASHBOARD_URL/agent/server-agent.js. Please check network/URL."
+fi
 
 # 3. Create Systemd Service for Auto-start
 echo "[3/4] Configuring systemd background service..."
@@ -52,7 +76,7 @@ WorkingDirectory=$INSTALL_DIR
 Environment="VIORECERT_DASHBOARD_URL=$DASHBOARD_URL"
 Environment="VIORECERT_AGENT_TOKEN=$AGENT_TOKEN"
 Environment="VIORECERT_AGENT_PORT=3010"
-Environment="VIORECERT_INTERVAL=30"
+Environment="VIORECERT_INTERVAL=15"
 ExecStart=$(which node) $INSTALL_DIR/server-agent.js
 Restart=always
 RestartSec=10
@@ -68,7 +92,8 @@ sudo systemctl enable viorecert-agent
 sudo systemctl restart viorecert-agent
 
 echo "=========================================================="
-echo "  VioreCert Agent successfully installed and running!"
-echo "  Check status: sudo systemctl status viorecert-agent"
-echo "  Check logs:   sudo journalctl -u viorecert-agent -f"
+echo "  VioreCert Agent successfully installed and running on port 3010!"
+echo "  Local Health Check: curl http://localhost:3010/health"
+echo "  Service Status:     sudo systemctl status viorecert-agent"
+echo "  Live Logs:          sudo journalctl -u viorecert-agent -f"
 echo "=========================================================="
