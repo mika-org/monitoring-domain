@@ -60,9 +60,12 @@ function isSafeUrl(targetUrl) {
 
 // Telegram alert sender
 async function sendTelegramAlert(title, message, severity = 'WARNING') {
-  const token = process.env.TELEGRAM_BOT_TOKEN;
-  const chatId = process.env.TELEGRAM_CHAT_ID;
+  let token = (process.env.TELEGRAM_BOT_TOKEN || '').trim().replace(/^["']|["']$/g, '').replace(/^bot/i, '');
+  let chatId = (process.env.TELEGRAM_CHAT_ID || '').trim().replace(/^["']|["']$/g, '').replace(/^bot/i, '');
   if (!token || !chatId) return;
+
+  const botId = token.split(':')[0];
+  if (chatId === botId) return;
 
   const icon = severity === 'CRITICAL' ? '🚨' : severity === 'WARNING' ? '⚠️' : 'ℹ️';
   const text = `${icon} *[VioreCert Monitor Alert]*\n*${title}*\n\n${message}\n\n_Waktu: ${new Date().toLocaleString('id-ID', { timeZone: 'Asia/Jakarta' })} WIB_`;
