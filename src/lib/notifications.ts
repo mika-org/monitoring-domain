@@ -1,11 +1,32 @@
 import { prisma } from './prisma';
 
-interface SendAlertOptions {
+export interface SendAlertOptions {
   title: string;
   message: string;
   severity?: 'INFO' | 'WARNING' | 'CRITICAL';
   serverId?: string;
   websiteId?: string;
+  customText?: string;
+  parseMode?: 'HTML' | 'Markdown';
+  meta?: {
+    repository?: string;
+    branch?: string;
+    committer?: string;
+    commitMessage?: string;
+    commitUrl?: string;
+    serverIp?: string;
+    serverName?: string;
+    serverStatus?: string;
+    cpu?: number | string;
+    ram?: number | string;
+    disk?: string;
+    pm2Count?: number;
+    appPort?: string | number;
+    appLink?: string;
+    duration?: string;
+    statusText?: string;
+    [key: string]: any;
+  };
 }
 
 export async function sendTelegramAlert(options: SendAlertOptions): Promise<{ success: boolean; error?: string }> {
@@ -35,8 +56,120 @@ export async function sendTelegramAlert(options: SendAlertOptions): Promise<{ su
     };
   }
 
-  const icon = options.severity === 'CRITICAL' ? '🚨' : options.severity === 'WARNING' ? '⚠️' : 'ℹ️';
-  const text = `${icon} *[VioreCert Monitor Alert]*\n*${options.title}*\n\n${options.message}\n\n_Waktu: ${new Date().toLocaleString('id-ID', { timeZone: 'Asia/Jakarta' })} WIB_`;
+  let text = options.customText;
+
+  if (!text) {
+    const isCritical = options.severity === 'CRITICAL';
+    const isWarning = options.severity === 'WARNING';
+    const headerEmoji = isCritical ? '🚨' : isWarning ? '⚠️' : '🚀';
+    const statusEmoji = isCritical ? '❌' : isWarning ? '⚠️' : '✅';
+    const statusText = options.meta?.statusText || (isCritical ? 'CRITICAL INCIDENT DETECTED' : isWarning ? 'WARNING THRESHOLD EXCEEDED' : 'SYSTEM NOTIFICATION');
+
+    const repo = options.meta?.repository || 'mika-org/monitoring-domain';
+    const branch = options.meta?.branch || 'master';
+    const appPort = options.meta?.appPort || '3009';
+    const appLink = options.meta?.appLink || 'https://monitoring-domain.elevore.web.id';
+
+    const lines: string[] = [
+      `${headerEmoji} <b>${options.title}</b>`,
+      '',
+      `${statusEmoji} <b>${statusText}</b>`,
+      '',
+      `📦 <b>Repository:</b> <code>${repo}</code>`,
+      `🌿 <b>Branch:</b> <code>${branch}</code>`,
+    ];
+
+    if (options.meta?.committer) {
+      lines.push(`👤 <b>Committer:</b> ${options.meta.committer}`);
+    }
+
+    if (options.meta?.commitMessage) {
+      lines.push('');
+      lines.push(`📝 <b>Commit:</b>`);
+      lines.push(options.meta.commitMessage);
+    }
+
+    if (options.meta?.commitUrl) {
+      lines.push('');
+      lines.push(`🔗 <b>Commit:</b>`);
+      lines.push(options.meta.commitUrl);
+    }
+
+    let serverRendered = false;
+    if (options.meta?.serverIp || options.meta?.serverName) {
+      lines.push('');
+      lines.push(`🖥 <b>Server:</b>`);
+      const srvTitle = [options.meta.serverIp, options.meta.serverName ? `(${options.meta.serverName})` : ''].filter(Boolean).join(' ');
+      lines.push(srvTitle);
+      if (options.meta.serverStatus) lines.push(`• <b>Status:</b> ${options.meta.serverStatus}`);
+      if (options.meta.cpu !== undefined) lines.push(`• <b>CPU Usage:</b> ${options.meta.cpu}%`);
+      if (options.meta.ram !== undefined) lines.push(`• <b>RAM Usage:</b> ${options.meta.ram}%`);
+      if (options.meta.pm2Count !== undefined) lines.push(`• <b>PM2 Processes:</b> ${options.meta.pm2Count} processes`);
+      serverRendered = true;
+    } else if (options.serverId) {
+      try {
+        const srv = await prisma.server.findUnique({
+          where: { id: options.serverId },
+          include: { metrics: { orderBy: { timestamp: 'desc' }, take: 1 } },
+        });
+        if (srv) {
+          lines.push('');
+          lines.push(`🖥 <b>Server:</b>`);
+          lines.push(`${srv.ipAddress} (${srv.name})`);
+          lines.push(`• <b>Status:</b> ${srv.status === 'ONLINE' ? '🟢 ONLINE' : srv.status === 'WARNING' ? '⚠️ WARNING' : '🔴 OFFLINE'}`);
+          if (srv.metrics[0]) {
+            lines.push(`• <b>CPU Usage:</b> ${srv.metrics[0].cpuUsage.toFixed(1)}%`);
+            lines.push(`• <b>RAM Usage:</b> ${srv.metrics[0].ramUsagePercent.toFixed(1)}%`);
+          }
+          serverRendered = true;
+        }
+      } catch {}
+    }
+
+    if (!serverRendered) {
+      lines.push('');
+      lines.push(`🖥 <b>Server:</b>`);
+      lines.push('103.93.162.19');
+    }
+
+    if (options.websiteId) {
+      try {
+        const web = await prisma.website.findUnique({ where: { id: options.websiteId } });
+        if (web) {
+          lines.push('');
+          lines.push(`🌐 <b>Target Website:</b>`);
+          lines.push(`${web.name} (${web.url})`);
+          lines.push(`• <b>Status:</b> ${web.status}`);
+          if (web.responseTime) lines.push(`• <b>Response Time:</b> ${Math.round(web.responseTime)}ms`);
+          if (web.sslDaysRemaining !== null) lines.push(`• <b>SSL Remaining:</b> ${web.sslDaysRemaining} days`);
+        }
+      } catch {}
+    }
+
+    if (options.message) {
+      lines.push('');
+      lines.push(`📝 <b>Detail:</b>`);
+      lines.push(options.message);
+    }
+
+    lines.push('');
+    lines.push(`🌐 <b>Application Port:</b> <code>${appPort}</code>`);
+    lines.push(`🌐 <b>Application Link:</b> ${appLink}`);
+
+    const now = new Date().toLocaleString('id-ID', { timeZone: 'Asia/Jakarta' }).replace(/\./g, ':');
+    lines.push('');
+    lines.push(`🕒 <b>Finished:</b> ${now} WIB`);
+    if (options.meta?.duration) {
+      lines.push(`⏱️ <b>Duration:</b> ${options.meta.duration}`);
+    }
+
+    lines.push('');
+    lines.push(`🚀 <b>Status:</b> ${statusEmoji} ${options.severity || 'SUCCESS'}`);
+
+    text = lines.join('\n');
+  }
+
+  const parseMode = options.parseMode || 'HTML';
 
   try {
     const res = await fetch(`https://api.telegram.org/bot${token}/sendMessage`, {
@@ -45,7 +178,8 @@ export async function sendTelegramAlert(options: SendAlertOptions): Promise<{ su
       body: JSON.stringify({
         chat_id: chatId,
         text,
-        parse_mode: 'Markdown',
+        parse_mode: parseMode,
+        disable_web_page_preview: true,
       }),
       signal: AbortSignal.timeout(8000),
     });

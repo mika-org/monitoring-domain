@@ -59,7 +59,7 @@ function isSafeUrl(targetUrl) {
 }
 
 // Telegram alert sender
-async function sendTelegramAlert(title, message, severity = 'WARNING') {
+async function sendTelegramAlert(title, message, severity = 'WARNING', extra = {}) {
   let token = (process.env.TELEGRAM_BOT_TOKEN || '').trim().replace(/^["']|["']$/g, '').replace(/^bot/i, '');
   let chatId = (process.env.TELEGRAM_CHAT_ID || '').trim().replace(/^["']|["']$/g, '').replace(/^bot/i, '');
   if (!token || !chatId) return;
@@ -67,11 +67,61 @@ async function sendTelegramAlert(title, message, severity = 'WARNING') {
   const botId = token.split(':')[0];
   if (chatId === botId) return;
 
-  const icon = severity === 'CRITICAL' ? '🚨' : severity === 'WARNING' ? '⚠️' : 'ℹ️';
-  const text = `${icon} *[VioreCert Monitor Alert]*\n*${title}*\n\n${message}\n\n_Waktu: ${new Date().toLocaleString('id-ID', { timeZone: 'Asia/Jakarta' })} WIB_`;
+  const isCritical = severity === 'CRITICAL';
+  const isWarning = severity === 'WARNING';
+  const headerEmoji = isCritical ? '🚨' : isWarning ? '⚠️' : '🚀';
+  const statusEmoji = isCritical ? '❌' : isWarning ? '⚠️' : '✅';
+  const statusTitle = isCritical ? 'Incident Detected' : isWarning ? 'Warning Threshold Exceeded' : 'System Notification';
+  const now = new Date().toLocaleString('id-ID', { timeZone: 'Asia/Jakarta' }).replace(/\./g, ':') + ' WIB';
+
+  const lines = [
+    `${headerEmoji} <b>${title}</b>`,
+    '',
+    `${statusEmoji} <b>${statusTitle}</b>`,
+    '',
+    '📦 <b>Repository:</b> <code>mika-org/monitoring-domain</code>',
+    '🌿 <b>Branch:</b> <code>master</code>',
+  ];
+
+  if (extra.serverName || extra.serverIp) {
+    lines.push('');
+    lines.push(`🖥 <b>Server:</b>`);
+    lines.push(`${extra.serverIp || ''} ${extra.serverName ? `(${extra.serverName})` : ''}`.trim());
+    if (extra.serverStatus) lines.push(`• <b>Status:</b> ${extra.serverStatus}`);
+    if (extra.cpu !== undefined) lines.push(`• <b>CPU Usage:</b> ${extra.cpu}%`);
+    if (extra.ram !== undefined) lines.push(`• <b>RAM Usage:</b> ${extra.ram}%`);
+    if (extra.pm2Count !== undefined) lines.push(`• <b>PM2 Processes:</b> ${extra.pm2Count} active processes`);
+  }
+
+  if (extra.websiteUrl || extra.websiteName) {
+    lines.push('');
+    lines.push(`🌐 <b>Target Website:</b>`);
+    lines.push(`${extra.websiteName || ''} (${extra.websiteUrl || ''})`.trim());
+    if (extra.websiteStatus) lines.push(`• <b>Status:</b> ${extra.websiteStatus}`);
+    if (extra.responseTime) lines.push(`• <b>Response Time:</b> ${extra.responseTime}ms`);
+    if (extra.sslDays !== undefined) lines.push(`• <b>SSL Remaining:</b> ${extra.sslDays} days`);
+  }
+
+  lines.push('');
+  lines.push('📝 <b>Detail:</b>');
+  lines.push(message);
+  lines.push('');
+  lines.push('🌐 <b>Application Port:</b> <code>3009</code>');
+  lines.push('🌐 <b>Application Link:</b> https://monitoring-domain.elevore.web.id');
+  lines.push('');
+  lines.push(`🕒 <b>Triggered:</b> ${now}`);
+  lines.push('');
+  lines.push(`🚀 <b>Status:</b> ${statusEmoji} ${severity}`);
+
+  const text = lines.join('\n');
 
   try {
-    const postData = JSON.stringify({ chat_id: chatId, text, parse_mode: 'Markdown' });
+    const postData = JSON.stringify({
+      chat_id: chatId,
+      text,
+      parse_mode: 'HTML',
+      disable_web_page_preview: true,
+    });
     const req = https.request(
       `https://api.telegram.org/bot${token}/sendMessage`,
       {
@@ -120,7 +170,43 @@ async function triggerAlert({ serverId, websiteId, type, severity, message, cool
     },
   });
 
-  await sendTelegramAlert(`[${severity}] ${type}`, message, severity);
+  let extra = {};
+  if (serverId) {
+    try {
+      const s = await prisma.server.findUnique({
+        where: { id: serverId },
+        include: {
+          metrics: { orderBy: { timestamp: 'desc' }, take: 1 },
+          pm2Processes: true,
+        },
+      });
+      if (s) {
+        extra.serverName = s.name;
+        extra.serverIp = s.ipAddress;
+        extra.serverStatus = s.status === 'ONLINE' ? '🟢 ONLINE' : s.status === 'WARNING' ? '⚠️ WARNING' : '🔴 OFFLINE';
+        if (s.metrics[0]) {
+          extra.cpu = s.metrics[0].cpuUsage?.toFixed(1);
+          extra.ram = s.metrics[0].ramUsagePercent?.toFixed(1);
+        }
+        extra.pm2Count = s.pm2Processes?.length;
+      }
+    } catch {}
+  }
+
+  if (websiteId) {
+    try {
+      const w = await prisma.website.findUnique({ where: { id: websiteId } });
+      if (w) {
+        extra.websiteName = w.name;
+        extra.websiteUrl = w.url;
+        extra.websiteStatus = w.status === 'UP' ? '🟢 UP' : '🔴 DOWN';
+        if (w.responseTime) extra.responseTime = Math.round(w.responseTime);
+        if (w.sslDaysRemaining !== null) extra.sslDays = w.sslDaysRemaining;
+      }
+    } catch {}
+  }
+
+  await sendTelegramAlert(`[${severity}] ${type}`, message, severity, extra);
 }
 
 // Check SSL Certificate expiration
